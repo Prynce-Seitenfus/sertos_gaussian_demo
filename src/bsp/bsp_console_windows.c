@@ -16,8 +16,10 @@
  * @brief Saved original console output mode for restoration upon exit.
  */
 static DWORD s_original_out_mode = 0U;
+static DWORD s_original_in_mode = 0U;
 static bool s_mode_saved = false;
 static HANDLE s_stdout_handle = INVALID_HANDLE_VALUE;
+static HANDLE s_stdin_handle = INVALID_HANDLE_VALUE;
 
 void bsp_console_init(void)
 {
@@ -27,9 +29,20 @@ void bsp_console_init(void)
     if (s_stdout_handle != INVALID_HANDLE_VALUE) {
         if (GetConsoleMode(s_stdout_handle, &mode)) {
             s_original_out_mode = mode;
-            s_mode_saved = true;
             mode |= (DWORD)ENABLE_VIRTUAL_TERMINAL_PROCESSING;
             (void)SetConsoleMode(s_stdout_handle, mode);
+        }
+    }
+
+    s_stdin_handle = GetStdHandle(STD_INPUT_HANDLE);
+    if (s_stdin_handle != INVALID_HANDLE_VALUE) {
+        if (GetConsoleMode(s_stdin_handle, &mode)) {
+            s_original_in_mode = mode;
+            s_mode_saved = true;
+            /* Disable QuickEdit mode so mouse clicks do not freeze console execution */
+            mode &= ~((DWORD)0x0040U); /* ENABLE_QUICK_EDIT_MODE */
+            mode |= (DWORD)0x0080U;  /* ENABLE_EXTENDED_FLAGS */
+            (void)SetConsoleMode(s_stdin_handle, mode);
         }
     }
 
@@ -71,8 +84,13 @@ void bsp_console_cleanup(void)
     (void)fputs("\033[?25h\033[0m\n", stdout);
     (void)fflush(stdout);
 
-    if (s_mode_saved && (s_stdout_handle != INVALID_HANDLE_VALUE)) {
-        (void)SetConsoleMode(s_stdout_handle, s_original_out_mode);
+    if (s_mode_saved) {
+        if (s_stdout_handle != INVALID_HANDLE_VALUE) {
+            (void)SetConsoleMode(s_stdout_handle, s_original_out_mode);
+        }
+        if (s_stdin_handle != INVALID_HANDLE_VALUE) {
+            (void)SetConsoleMode(s_stdin_handle, s_original_in_mode);
+        }
         s_mode_saved = false;
     }
 }

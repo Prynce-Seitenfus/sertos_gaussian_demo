@@ -217,10 +217,20 @@ void gaussian_task_input_entry(void* param)
                     s_batch_index = 0U;
                     (void)sertos_mutex_unlock(s_mutex_handle);
                 }
+            } else if ((ch == 'm') || (ch == 'M')) {
+                if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
+                    s_app_state.stream_mode = !s_app_state.stream_mode;
+                    (void)sertos_mutex_unlock(s_mutex_handle);
+                }
             } else if ((ch == 'q') || (ch == 'Q') || (ch == 27)) {
                 if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
                     s_app_state.should_terminate = true;
                     (void)sertos_mutex_unlock(s_mutex_handle);
+                }
+                terminal_ui_cleanup();
+                bsp_console_puts("\r\n[SertOS] Clean shutdown requested. Exiting...\r\n");
+                for (volatile uint32_t d = 0U; d < 50000U; d++) {
+                    __asm__ volatile ("nop");
                 }
                 sertos_port_stop_scheduler();
                 break;

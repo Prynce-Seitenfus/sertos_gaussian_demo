@@ -39,6 +39,7 @@ typedef struct GaussianState {
     WelfordState stats;               /**< Running arithmetic mean, variance, and std dev. */
     bool is_paused;                   /**< True if sample generation is paused by user. */
     bool should_terminate;            /**< True if application shutdown was requested. */
+    bool stream_mode;                 /**< True for linear log stream mode instead of ANSI dashboard. */
 } GaussianState;
 
 /**

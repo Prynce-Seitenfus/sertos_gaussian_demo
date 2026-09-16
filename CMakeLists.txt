@@ -7,15 +7,20 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 # Configurable paths to SertOS headers and pre-compiled static library
 set(SERTOS_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../sertos" CACHE PATH "Path to SertOS root directory")
 
-# Configure target library based on host platform
-if(WIN32)
+option(BUILD_M33 "Build for ARM Cortex-M33 QEMU target" OFF)
+
+# Configure target library based on host platform or cross-target
+if(BUILD_M33 OR (DEFINED TARGET_ARCH AND TARGET_ARCH STREQUAL "cortex-m33"))
+    set(SERTOS_LIB_NAME "libsertos_cortex_m33.a")
+    set(SERTOS_SUBDIR "arm")
+elseif(WIN32)
     set(SERTOS_LIB_NAME "libsertos_windows.a")
     set(SERTOS_SUBDIR "windows")
 elseif(UNIX)
     set(SERTOS_LIB_NAME "libsertos_posix.a")
     set(SERTOS_SUBDIR "posix")
 else()
-    set(SERTOS_LIB_NAME "libsertos_cortex_m4.a")
+    set(SERTOS_LIB_NAME "libsertos_cortex_m33.a")
     set(SERTOS_SUBDIR "arm")
 endif()
 
@@ -38,12 +43,14 @@ set(DEMO_SOURCES
 )
 
 # Select board/platform support package console driver
-if(WIN32)
+if(BUILD_M33 OR (DEFINED TARGET_ARCH AND TARGET_ARCH STREQUAL "cortex-m33"))
+    list(APPEND DEMO_SOURCES src/bsp/bsp_console_uart_stub.c src/bsp/startup_arm_cortex_m.c)
+elseif(WIN32)
     list(APPEND DEMO_SOURCES src/bsp/bsp_console_windows.c)
 elseif(UNIX)
     list(APPEND DEMO_SOURCES src/bsp/bsp_console_posix.c)
 else()
-    list(APPEND DEMO_SOURCES src/bsp/bsp_console_uart_stub.c)
+    list(APPEND DEMO_SOURCES src/bsp/bsp_console_uart_stub.c src/bsp/startup_arm_cortex_m.c)
 endif()
 
 add_executable(sertos_gaussian_demo ${DEMO_SOURCES})

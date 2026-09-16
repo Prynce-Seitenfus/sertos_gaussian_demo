@@ -1,9 +1,11 @@
 /**
  * @file terminal_ui.c
- * @brief Implementation of the flicker-free ANSI terminal visualizer.
+ * @brief Implementation of the flicker-free ANSI single-column terminal visualizer.
  *
- * Emits cursor-home sequences (\033[H), normalizes peak bin counts to 45 columns,
- * and renders a colored horizontal bell curve with numerical telemetry.
+ * Renders the full 21-bin Gaussian distribution bell curve in a continuous
+ * vertical column with 45-character peak normalization. Strictly formatted
+ * to 24 lines and 70 columns to prevent scrolling on standard 80x24 terminals.
+ * Also provides an interactive single-line log stream mode.
  */
 
 #include "terminal_ui.h"
@@ -18,10 +20,16 @@
 static char s_render_buf[4096];
 
 /**
+ * @brief Tracks previous stream mode for clean screen clearing on transition.
+ */
+static bool s_prev_stream_mode = false;
+
+/**
  * @brief ANSI escape sequence constants.
  */
 #define ANSI_CURSOR_HOME    "\033[H"
 #define ANSI_CLEAR_SCREEN   "\033[2J"
+#define ANSI_CLEAR_DOWN     "\033[J"
 #define ANSI_RESET          "\033[0m"
 #define ANSI_BOLD           "\033[1m"
 #define ANSI_COLOR_CYAN     "\033[36m"
@@ -35,12 +43,14 @@ static char s_render_buf[4096];
 void terminal_ui_init(void)
 {
     bsp_console_init();
+    s_prev_stream_mode = false;
     /* Clear screen once upon startup */
     bsp_console_puts(ANSI_CLEAR_SCREEN ANSI_CURSOR_HOME);
 }
 
 void terminal_ui_cleanup(void)
 {
+    bsp_console_puts(ANSI_RESET "\n");
     bsp_console_cleanup();
 }
 
@@ -79,6 +89,27 @@ void terminal_ui_render(const GaussianState* state)
         return;
     }
 
+    /* Stream Mode: Linear log output without ANSI cursor positioning */
+    if (state->stream_mode) {
+        s_prev_stream_mode = true;
+        (void)snprintf(s_render_buf, sizeof(s_render_buf),
+            "[SERTOS] N=%-6u | mu=%+7.4f | s=%6.4f | s2=%6.4f | Drop=%-2u | %s\n",
+            (unsigned int)state->total_samples,
+            state->stats.mean,
+            state->stats.std_dev,
+            state->stats.variance,
+            (unsigned int)state->dropped_samples,
+            state->is_paused ? "PAUSED" : "RUNNING");
+        bsp_console_puts(s_render_buf);
+        return;
+    }
+
+    /* Transitioning back from stream mode to dashboard: clear screen */
+    if (s_prev_stream_mode) {
+        bsp_console_puts(ANSI_CLEAR_SCREEN);
+        s_prev_stream_mode = false;
+    }
+
     /* Identify peak bin count for dynamic normalization */
     for (i = 0U; i < GAUSSIAN_NUM_BINS; i++) {
         if (state->bins[i] > max_count) {
@@ -94,45 +125,28 @@ void terminal_ui_render(const GaussianState* state)
         status_color = ANSI_BOLD ANSI_COLOR_GREEN;
     }
 
-    /* Emit cursor home to begin overwrite */
+    /* Line 1: Compact Telemetry Header & Moments (width ~71 chars, strictly < 80) */
     offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
         ANSI_CURSOR_HOME
-        ANSI_BOLD ANSI_COLOR_CYAN
-        "========================================================================================\n"
-        "           SertOS Preemptive RTOS — Real-Time Gaussian Distribution Showcase            \n"
-        "========================================================================================\n"
-        ANSI_RESET);
-
-    /* Telemetry Header */
-    offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
-        ANSI_BOLD "Status: " ANSI_RESET "%s%-8s" ANSI_RESET
-        ANSI_BOLD " | Samples: " ANSI_COLOR_WHITE "%-7u" ANSI_RESET
-        ANSI_BOLD " | Batches: " ANSI_COLOR_WHITE "%-5u" ANSI_RESET
-        ANSI_BOLD " | Dropped: " ANSI_COLOR_RED "%-4u" ANSI_RESET
-        ANSI_BOLD " | Rate: " ANSI_COLOR_WHITE "50 Hz (20ms)\n" ANSI_RESET,
+        ANSI_BOLD ANSI_COLOR_CYAN "SertOS" ANSI_RESET
+        " | %s%-7s" ANSI_RESET
+        " | " ANSI_BOLD "N:" ANSI_RESET " " ANSI_COLOR_WHITE "%-6u" ANSI_RESET
+        " | " ANSI_BOLD "mu:" ANSI_RESET " " ANSI_COLOR_GREEN "%+6.3f" ANSI_RESET
+        " | " ANSI_BOLD "s:" ANSI_RESET " " ANSI_COLOR_GREEN "%5.3f" ANSI_RESET
+        " | " ANSI_BOLD "Var:" ANSI_RESET " " ANSI_COLOR_GREEN "%5.3f" ANSI_RESET
+        " | " ANSI_BOLD "Drop:" ANSI_RESET " " ANSI_COLOR_RED "%-2u" ANSI_RESET "\n",
         status_color, status_str,
-        state->total_samples,
-        state->batch_count,
-        state->dropped_samples);
-
-    /* Statistical Moments */
-    offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
-        ANSI_BOLD "Mean (mu):   " ANSI_COLOR_GREEN "%+7.4f" ANSI_RESET " (Target:  0.00 +/- 0.05)"
-        ANSI_BOLD " | Variance (s2): " ANSI_COLOR_GREEN "%6.4f" ANSI_RESET "\n"
-        ANSI_BOLD "StdDev (s):  " ANSI_COLOR_GREEN "%7.4f" ANSI_RESET " (Target:  1.00 +/- 0.05)"
-        ANSI_BOLD " | Discretization: 21 equidistant bins\n" ANSI_RESET
-        ANSI_COLOR_GRAY
-        "----------------------------------------------------------------------------------------\n"
-        ANSI_BOLD
-        "Bin  Range [Sigma]   Count  Normalized Distribution [45-character peak scale]\n"
-        ANSI_COLOR_GRAY
-        "----------------------------------------------------------------------------------------\n"
-        ANSI_RESET,
+        (unsigned int)state->total_samples,
         state->stats.mean,
+        state->stats.std_dev,
         state->stats.variance,
-        state->stats.std_dev);
+        (unsigned int)state->dropped_samples);
 
-    /* 21 Histogram Bins */
+    /* Line 2: Table Header (width 66 chars) */
+    offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
+        ANSI_BOLD "Bin Range         Count  Normalized Distribution [45-character scale]" ANSI_RESET "\n");
+
+    /* Lines 3 to 23: Exactly 21 Continuous Gaussian Bins in 1 Column (width 70 chars) */
     for (i = 0U; i < GAUSSIAN_NUM_BINS; i++) {
         double low = GAUSSIAN_RANGE_MIN + ((double)i * GAUSSIAN_BIN_WIDTH);
         double high = low + GAUSSIAN_BIN_WIDTH;
@@ -147,8 +161,8 @@ void terminal_ui_render(const GaussianState* state)
         }
 
         offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
-            "%2u  [%+5.2f, %+5.2f]  %5u  |%s",
-            i, low, high, state->bins[i], color);
+            "%2u [%+5.2f,%+5.2f] %5u |%s",
+            (unsigned int)i, low, high, (unsigned int)state->bins[i], color);
 
         /* Render horizontal ASCII bar glyphs */
         for (j = 0U; j < bar_len; j++) {
@@ -169,16 +183,12 @@ void terminal_ui_render(const GaussianState* state)
             ANSI_RESET "|\n");
     }
 
-    /* Footer & Interactive Controls */
+    /* Line 24: Interactive Controls & Clear Remainder (width 72 chars, total lines = 24) */
     offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
-        ANSI_COLOR_GRAY
-        "----------------------------------------------------------------------------------------\n"
-        ANSI_RESET
         ANSI_BOLD "[CONTROLS]" ANSI_RESET
-        "  [P] Pause/Resume Generation   [R] Reset Statistics   [Q] Graceful Exit\n"
-        ANSI_BOLD ANSI_COLOR_CYAN
-        "========================================================================================\n"
-        ANSI_RESET);
+        "  [P] Pause/Resume    [R] Reset    [M] Stream Mode    [Q] Exit Demo"
+        ANSI_RESET
+        ANSI_CLEAR_DOWN);
 
     bsp_console_puts(s_render_buf);
 }

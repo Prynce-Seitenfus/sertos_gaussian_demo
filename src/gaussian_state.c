@@ -13,6 +13,7 @@ void gaussian_state_init(GaussianState* state)
         welford_init(&state->stats);
         state->is_paused = false;
         state->should_terminate = false;
+        state->stream_mode = false;
     }
 }
 
