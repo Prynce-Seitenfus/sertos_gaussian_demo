@@ -65,6 +65,16 @@ for %%A in (%*) do (
         set "TARGET_MODE=m55"
     ) else if /i "%%~A"=="cortex-m55" (
         set "TARGET_MODE=m55"
+    ) else if /i "%%~A"=="riscv" (
+        set "TARGET_MODE=rv32i"
+    ) else if /i "%%~A"=="rv32i" (
+        set "TARGET_MODE=rv32i"
+    ) else if /i "%%~A"=="rv32imc" (
+        set "TARGET_MODE=rv32imc"
+    ) else if /i "%%~A"=="rv32imac" (
+        set "TARGET_MODE=rv32imac"
+    ) else if /i "%%~A"=="rv32imafc" (
+        set "TARGET_MODE=rv32imafc"
     ) else if /i "%%~xA"==".exe" (
         set "TARGET_MODE=windows"
         set "USER_FILE=%%~A"
@@ -91,6 +101,14 @@ if "!TARGET_MODE!"=="windows" (
     call :run_windows
 ) else if "!TARGET_MODE!"=="posix" (
     call :run_posix
+) else if "!TARGET_MODE!"=="rv32i" (
+    call :run_qemu_riscv rv32i
+) else if "!TARGET_MODE!"=="rv32imc" (
+    call :run_qemu_riscv rv32imc
+) else if "!TARGET_MODE!"=="rv32imac" (
+    call :run_qemu_riscv rv32imac
+) else if "!TARGET_MODE!"=="rv32imafc" (
+    call :run_qemu_riscv rv32imafc
 ) else (
     call :run_qemu !TARGET_MODE!
 )
@@ -268,6 +286,63 @@ echo.
 exit /b 0
 
 :: -----------------------------------------------------------------------------
+:: Subroutine: Run RISC-V QEMU Target
+:: Usage: call :run_qemu_riscv <profile>
+:: -----------------------------------------------------------------------------
+:run_qemu_riscv
+set "RISCV_PROFILE=%~1"
+if not defined RISCV_PROFILE set "RISCV_PROFILE=rv32i"
+
+set "DEFAULT_ELF=build\riscv\sertos_gaussian_demo_%RISCV_PROFILE%.elf"
+
+if not defined USER_FILE (
+    set "USER_FILE=!DEFAULT_ELF!"
+)
+
+if not exist "!USER_FILE!" (
+    echo [INFO] !USER_FILE! not found. Auto-building via build.bat %RISCV_PROFILE%...
+    call build.bat %RISCV_PROFILE%
+    if not exist "!USER_FILE!" (
+        echo [ERROR] Build failed. Aborting.
+        exit /b 1
+    )
+)
+
+set "QEMU_BIN="
+if exist "C:\qemu\qemu-system-riscv32.exe" (
+    set "QEMU_BIN=C:\qemu\qemu-system-riscv32.exe"
+) else if exist "C:\Program Files\qemu\qemu-system-riscv32.exe" (
+    set "QEMU_BIN=C:\Program Files\qemu\qemu-system-riscv32.exe"
+) else (
+    where qemu-system-riscv32.exe >nul 2>nul
+    if not errorlevel 1 (
+        for /f "delims=" %%I in ('where qemu-system-riscv32.exe') do (
+            if not defined QEMU_BIN set "QEMU_BIN=%%~fI"
+        )
+    )
+)
+
+if not defined QEMU_BIN (
+    echo [ERROR] qemu-system-riscv32.exe not found!
+    echo Please ensure QEMU is installed at C:\qemu or in your PATH.
+    exit /b 1
+)
+
+echo ============================================================
+echo [QEMU] Launching SertOS Gaussian Demo in RISC-V Emulator
+echo [QEMU] Binary:  !USER_FILE!
+echo [QEMU] Target:  RISC-V %RISCV_PROFILE%
+echo [QEMU] Machine: virt
+echo [QEMU] Press 'q' in console or Ctrl+A then X to terminate QEMU.
+echo ============================================================
+echo.
+
+"%QEMU_BIN%" -machine virt -bios none -nographic -no-reboot -kernel "!USER_FILE!"
+echo.
+exit /b 0
+
+
+:: -----------------------------------------------------------------------------
 :: Help Usage
 :: -----------------------------------------------------------------------------
 :show_help
@@ -277,14 +352,18 @@ echo.
 echo Targets:
 echo   mingw64, windows Run MinGW-w64 host application (build\mingw64\sertos_gaussian_demo.exe) [Default]
 echo   linux, posix    Run Linux / POSIX environment via WSL runner (build\linux\sertos_gaussian_demo)
-echo   m0              Run ARM Cortex-M0 in QEMU    (build\arm\sertos_gaussian_demo_m0.elf)
-echo   m0plus/m0+      Run ARM Cortex-M0+ in QEMU   (build\arm\sertos_gaussian_demo_m0plus.elf)
-echo   m3              Run ARM Cortex-M3 in QEMU    (build\arm\sertos_gaussian_demo_m3.elf)
-echo   m4              Run ARM Cortex-M4 in QEMU    (build\arm\sertos_gaussian_demo_m4.elf)
-echo   m7              Run ARM Cortex-M7 in QEMU    (build\arm\sertos_gaussian_demo_m7.elf)
-echo   m23             Run ARM Cortex-M23 in QEMU   (build\arm\sertos_gaussian_demo_m23.elf)
-echo   m33             Run ARM Cortex-M33 in QEMU   (build\arm\sertos_gaussian_demo_m33.elf)
-echo   m55             Run ARM Cortex-M55 in QEMU   (build\arm\sertos_gaussian_demo_m55.elf)
+echo   riscv, rv32i    Run RISC-V RV32I in QEMU          (build\riscv\sertos_gaussian_demo_rv32i.elf)
+echo   rv32imc         Run RISC-V RV32IMC in QEMU        (build\riscv\sertos_gaussian_demo_rv32imc.elf)
+echo   rv32imac        Run RISC-V RV32IMAC in QEMU       (build\riscv\sertos_gaussian_demo_rv32imac.elf)
+echo   rv32imafc       Run RISC-V RV32IMAFC FPU in QEMU  (build\riscv\sertos_gaussian_demo_rv32imafc.elf)
+echo   m0              Run ARM Cortex-M0 in QEMU         (build\arm\sertos_gaussian_demo_m0.elf)
+echo   m0plus/m0+      Run ARM Cortex-M0+ in QEMU        (build\arm\sertos_gaussian_demo_m0plus.elf)
+echo   m3              Run ARM Cortex-M3 in QEMU         (build\arm\sertos_gaussian_demo_m3.elf)
+echo   m4              Run ARM Cortex-M4 in QEMU         (build\arm\sertos_gaussian_demo_m4.elf)
+echo   m7              Run ARM Cortex-M7 in QEMU         (build\arm\sertos_gaussian_demo_m7.elf)
+echo   m23             Run ARM Cortex-M23 in QEMU        (build\arm\sertos_gaussian_demo_m23.elf)
+echo   m33             Run ARM Cortex-M33 in QEMU        (build\arm\sertos_gaussian_demo_m33.elf)
+echo   m55             Run ARM Cortex-M55 in QEMU        (build\arm\sertos_gaussian_demo_m55.elf)
 echo.
 echo Examples:
 echo   run.bat
@@ -292,6 +371,10 @@ echo   run.bat mingw64
 echo   run.bat windows
 echo   run.bat linux
 echo   run.bat posix
+echo   run.bat riscv
+echo   run.bat rv32imc
+echo   run.bat rv32imac
+echo   run.bat rv32imafc
 echo   run.bat m0
 echo   run.bat m0plus
 echo   run.bat m3
@@ -300,6 +383,7 @@ echo   run.bat m7
 echo   run.bat m23
 echo   run.bat m33
 echo   run.bat m55
+echo   run.bat build\riscv\sertos_gaussian_demo_rv32imac.elf
 echo   run.bat build\arm\sertos_gaussian_demo_m4.elf
 echo.
 popd

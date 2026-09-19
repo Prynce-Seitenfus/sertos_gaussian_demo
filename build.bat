@@ -68,6 +68,16 @@ for %%A in ("%~1" "%~2") do (
             set "CHOSEN_TARGET=cortex-m55"
         ) else if /i "%%~A"=="m55" (
             set "CHOSEN_TARGET=cortex-m55"
+        ) else if /i "%%~A"=="riscv" (
+            set "CHOSEN_TARGET=riscv"
+        ) else if /i "%%~A"=="rv32i" (
+            set "CHOSEN_TARGET=rv32i"
+        ) else if /i "%%~A"=="rv32imc" (
+            set "CHOSEN_TARGET=rv32imc"
+        ) else if /i "%%~A"=="rv32imac" (
+            set "CHOSEN_TARGET=rv32imac"
+        ) else if /i "%%~A"=="rv32imafc" (
+            set "CHOSEN_TARGET=rv32imafc"
         ) else if exist "%%~A\bin\gcc.exe" (
             set "CUSTOM_TOOLCHAIN=%%~A\bin"
         ) else if exist "%%~A\gcc.exe" (
@@ -75,6 +85,10 @@ for %%A in ("%~1" "%~2") do (
         ) else if exist "%%~A\bin\arm-none-eabi-gcc.exe" (
             set "CUSTOM_TOOLCHAIN=%%~A\bin"
         ) else if exist "%%~A\arm-none-eabi-gcc.exe" (
+            set "CUSTOM_TOOLCHAIN=%%~A"
+        ) else if exist "%%~A\bin\riscv-none-elf-gcc.exe" (
+            set "CUSTOM_TOOLCHAIN=%%~A\bin"
+        ) else if exist "%%~A\riscv-none-elf-gcc.exe" (
             set "CUSTOM_TOOLCHAIN=%%~A"
         )
     )
@@ -91,6 +105,7 @@ if not exist "build" mkdir "build"
 if not exist "build\mingw64" mkdir "build\mingw64"
 if not exist "build\arm" mkdir "build\arm"
 if not exist "build\linux" mkdir "build\linux"
+if not exist "build\riscv" mkdir "build\riscv"
 
 set "SERTOS_DIR=..\sertos"
 set "COMMON_INCLUDES=-Iinc -I%SERTOS_DIR%\inc -I%SERTOS_DIR%\port -I%SERTOS_DIR%\modules\ring_buffer -I%SERTOS_DIR%\modules\linked_list -I%SERTOS_DIR%\modules\bitmap -I%SERTOS_DIR%\modules\atomic"
@@ -129,9 +144,26 @@ if "%CHOSEN_TARGET%"=="host" (
     call :build_arm_single cortex-m33
 ) else if "%CHOSEN_TARGET%"=="cortex-m55" (
     call :build_arm_single cortex-m55
+) else if "%CHOSEN_TARGET%"=="riscv" (
+    call :build_riscv_single rv32i    rv32i_zicsr    ilp32
+    call :build_riscv_single rv32imc  rv32imc_zicsr  ilp32
+    call :build_riscv_single rv32imac rv32imac_zicsr ilp32
+    call :build_riscv_single rv32imafc rv32imafc_zicsr ilp32f
+) else if "%CHOSEN_TARGET%"=="rv32i" (
+    call :build_riscv_single rv32i    rv32i_zicsr    ilp32
+) else if "%CHOSEN_TARGET%"=="rv32imc" (
+    call :build_riscv_single rv32imc  rv32imc_zicsr  ilp32
+) else if "%CHOSEN_TARGET%"=="rv32imac" (
+    call :build_riscv_single rv32imac rv32imac_zicsr ilp32
+) else if "%CHOSEN_TARGET%"=="rv32imafc" (
+    call :build_riscv_single rv32imafc rv32imafc_zicsr ilp32f
 ) else if "%CHOSEN_TARGET%"=="all" (
     call :build_host_app
     call :build_arm_all
+    call :build_riscv_single rv32i    rv32i_zicsr    ilp32
+    call :build_riscv_single rv32imc  rv32imc_zicsr  ilp32
+    call :build_riscv_single rv32imac rv32imac_zicsr ilp32
+    call :build_riscv_single rv32imafc rv32imafc_zicsr ilp32f
 )
 
 echo.
@@ -427,6 +459,91 @@ echo ============================================================
 goto :eof
 
 :: -----------------------------------------------------------------------------
+:: Subroutine: Build RISC-V Application (single ISA profile)
+:: Usage: call :build_riscv_single <profile> <march> <mabi>
+::   profile = rv32i | rv32imc | rv32imac | rv32imafc
+::   march   = rv32i_zicsr | rv32imc_zicsr | rv32imac_zicsr | rv32imafc_zicsr
+::   mabi    = ilp32 | ilp32f
+:: -----------------------------------------------------------------------------
+:build_riscv_single
+set "RISCV_PROFILE=%~1"
+set "RISCV_MARCH=%~2"
+set "RISCV_MABI=%~3"
+set "RISCV_TOOLCHAIN="
+
+if defined CUSTOM_TOOLCHAIN (
+    if exist "%CUSTOM_TOOLCHAIN%\riscv-none-elf-gcc.exe" set "RISCV_TOOLCHAIN=%CUSTOM_TOOLCHAIN%"
+)
+
+if not defined RISCV_TOOLCHAIN (
+    if exist "C:\toolchains\riscv\13.2.0\bin\riscv-none-elf-gcc.exe" (
+        set "RISCV_TOOLCHAIN=C:\toolchains\riscv\13.2.0\bin"
+    ) else if exist "C:\riscv\13.2.0\bin\riscv-none-elf-gcc.exe" (
+        set "RISCV_TOOLCHAIN=C:\riscv\13.2.0\bin"
+    )
+)
+
+if not defined RISCV_TOOLCHAIN (
+    where riscv-none-elf-gcc.exe >nul 2>nul
+    if not errorlevel 1 (
+        for /f "delims=" %%I in ('where riscv-none-elf-gcc.exe') do (
+            if not defined RISCV_TOOLCHAIN set "RISCV_TOOLCHAIN=%%~dpI"
+        )
+    )
+)
+
+if not defined RISCV_TOOLCHAIN (
+    echo [ERROR] GNU RISC-V Embedded Toolchain not found!
+    set "BUILD_FAIL=1"
+    goto :eof
+)
+
+if "%RISCV_TOOLCHAIN:~-1%"=="\" set "RISCV_TOOLCHAIN=%RISCV_TOOLCHAIN:~0,-1%"
+
+set "RISCV_CC=%RISCV_TOOLCHAIN%\riscv-none-elf-gcc.exe"
+set "RISCV_SIZE=%RISCV_TOOLCHAIN%\riscv-none-elf-size.exe"
+
+set "SERTOS_RISCV_LIB=%SERTOS_DIR%\lib\riscv\libsertos_%RISCV_PROFILE%.a"
+
+if not exist "!SERTOS_RISCV_LIB!" (
+    echo [INFO] SertOS RISC-V library not found. Auto-building now...
+    pushd "%SERTOS_DIR%"
+    call build.bat %RISCV_PROFILE% "%RISCV_TOOLCHAIN%"
+    popd
+    if not exist "!SERTOS_RISCV_LIB!" (
+        echo [ERROR] Failed to compile !SERTOS_RISCV_LIB!
+        set "BUILD_FAIL=1"
+        goto :eof
+    )
+)
+
+set "TARGET_ELF=build\riscv\sertos_gaussian_demo_%RISCV_PROFILE%.elf"
+set "LDSCRIPT=bsp\riscv_virt.ld"
+
+echo.
+echo ============================================================
+echo [BUILD] Compiling RISC-V Target: %TARGET_ELF%
+echo [TOOLCHAIN] %RISCV_TOOLCHAIN%
+echo ============================================================
+
+set "RISCV_SRCS=%APP_CORE_SRCS% src\bsp\bsp_console_uart_stub.c src\bsp\startup_riscv.c"
+set "RISCV_CFLAGS=-march=%RISCV_MARCH% -mabi=%RISCV_MABI% -O2 -Wall -Wextra -std=c99 -ffunction-sections -fdata-sections"
+set "RISCV_SPECS=--specs=nano.specs -u _printf_float -nostartfiles"
+
+"%RISCV_CC%" %RISCV_CFLAGS% %RISCV_SPECS% %COMMON_INCLUDES% -Wl,--gc-sections -T %LDSCRIPT% %RISCV_SRCS% "!SERTOS_RISCV_LIB!" -lm -o "!TARGET_ELF!"
+if !ERRORLEVEL! neq 0 (
+    echo [ERROR] Failed compiling !TARGET_ELF!
+    set "BUILD_FAIL=1"
+    goto :eof
+)
+
+echo [SUCCESS] Generated: !TARGET_ELF!
+if exist "%RISCV_SIZE%" (
+    "%RISCV_SIZE%" -A "!TARGET_ELF!" | findstr /R /C:"Total" /C:".text" /C:".data" /C:".bss"
+)
+goto :eof
+
+:: -----------------------------------------------------------------------------
 :: Help Menu
 :: -----------------------------------------------------------------------------
 :show_help
@@ -434,10 +551,15 @@ echo.
 echo Usage: build.bat [TARGET] [TOOLCHAIN_PATH]
 echo.
 echo Targets:
-echo   all         Build mingw64 host and all 8 ARM Cortex binaries [Default]
+echo   all         Build host, all 8 ARM Cortex, and all 4 RISC-V binaries [Default]
 echo   mingw64     Build MinGW-w64 host executable (build\mingw64\sertos_gaussian_demo.exe) [alias: windows]
-echo   linux       Build Linux host binary         (build\linux\sertos_gaussian_demo) [alias: posix]
+echo   linux       Build Linux host binary         (build\linux\sertos_gaussian_demo)       [alias: posix]
 echo   arm         Build all 8 ARM Cortex binaries (build\arm\sertos_gaussian_demo_m*.elf)
+echo   riscv       Build all 4 RISC-V binaries     (build\riscv\sertos_gaussian_demo_rv32*.elf)
+echo   rv32i       Build RISC-V RV32I baseline     (build\riscv\sertos_gaussian_demo_rv32i.elf)      ilp32
+echo   rv32imc     Build RISC-V RV32IMC            (build\riscv\sertos_gaussian_demo_rv32imc.elf)    ilp32
+echo   rv32imac    Build RISC-V RV32IMAC           (build\riscv\sertos_gaussian_demo_rv32imac.elf)   ilp32
+echo   rv32imafc   Build RISC-V RV32IMAFC FPU      (build\riscv\sertos_gaussian_demo_rv32imafc.elf) ilp32f
 echo   m0          Build ARM Cortex-M0 binary      (build\arm\sertos_gaussian_demo_m0.elf)
 echo   m0plus/m0+  Build ARM Cortex-M0+ binary     (build\arm\sertos_gaussian_demo_m0plus.elf)
 echo   m3          Build ARM Cortex-M3 binary      (build\arm\sertos_gaussian_demo_m3.elf)
@@ -452,16 +574,13 @@ echo   build.bat
 echo   build.bat mingw64
 echo   build.bat linux
 echo   build.bat arm
-echo   build.bat m0
-echo   build.bat m0plus
-echo   build.bat m3
+echo   build.bat riscv
+echo   build.bat rv32imac
+echo   build.bat rv32imafc
 echo   build.bat m4
-echo   build.bat m7
-echo   build.bat m23
-echo   build.bat m33
-echo   build.bat m55
-echo   build.bat windows C:\toolchains\mingw64\13.2.0\bin
+echo   build.bat riscv   C:\toolchains\riscv\13.2.0\bin
 echo   build.bat arm     C:\toolchains\arm\13.2.1\bin
 echo.
 popd
 endlocal
+exit /b 0
