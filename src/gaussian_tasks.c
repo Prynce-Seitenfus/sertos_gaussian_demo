@@ -11,6 +11,7 @@
 #include "terminal_ui.h"
 #include "bsp_console.h"
 #include "sertos_scheduler.h"
+#include "sertos_task.h"
 #include "sertos_port.h"
 #include <string.h>
 
@@ -135,6 +136,8 @@ void gaussian_task_ingestion_entry(void* param)
             (void)sertos_mutex_unlock(s_mutex_handle);
         }
     }
+
+    (void)sertos_task_delete(NULL);
 }
 
 void gaussian_task_stats_entry(void* param)
@@ -165,6 +168,8 @@ void gaussian_task_stats_entry(void* param)
             (void)sertos_mutex_unlock(s_mutex_handle);
         }
     }
+
+    (void)sertos_task_delete(NULL);
 }
 
 void gaussian_task_visualizer_entry(void* param)
@@ -193,6 +198,7 @@ void gaussian_task_visualizer_entry(void* param)
     }
 
     terminal_ui_cleanup();
+    (void)sertos_task_delete(NULL);
 }
 
 void gaussian_task_input_entry(void* param)
@@ -227,16 +233,19 @@ void gaussian_task_input_entry(void* param)
                     s_app_state.should_terminate = true;
                     (void)sertos_mutex_unlock(s_mutex_handle);
                 }
+                (void)sertos_timer_stop(s_timer_handle);
                 terminal_ui_cleanup();
                 bsp_console_puts("\r\n[SertOS] Clean shutdown requested. Exiting...\r\n");
                 for (volatile uint32_t d = 0U; d < 50000U; d++) {
                     __asm__ volatile ("nop");
                 }
-                sertos_port_stop_scheduler();
+                sertos_scheduler_stop();
                 break;
             }
         }
     }
+
+    (void)sertos_task_delete(NULL);
 }
 
 SertosStatus gaussian_tasks_init(void)

@@ -25,16 +25,59 @@ extern uint32_t end;
 extern int main(void);
 
 /* SertOS assembly exception handlers */
-extern void SVC_Handler(void);
 extern void PendSV_Handler(void);
 
 void Reset_Handler(void);
-void NMI_Handler(void)        { while (1) { __asm__ volatile ("wfi"); } }
-void HardFault_Handler(void)  { while (1) { __asm__ volatile ("wfi"); } }
-void MemManage_Handler(void)  { while (1) { __asm__ volatile ("wfi"); } }
-void BusFault_Handler(void)   { while (1) { __asm__ volatile ("wfi"); } }
-void UsageFault_Handler(void) { while (1) { __asm__ volatile ("wfi"); } }
-void DebugMon_Handler(void)   { while (1) { __asm__ volatile ("wfi"); } }
+
+void NMI_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+void HardFault_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+void MemManage_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+void BusFault_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+void UsageFault_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+__attribute__((weak))
+void SVC_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
+
+void DebugMon_Handler(void)
+{
+    while (1) {
+        __asm__ volatile ("wfi");
+    }
+}
 
 /**
  * @brief Cortex-M periodic SysTick interrupt handler.
@@ -47,8 +90,8 @@ void SysTick_Handler(void)
 
 void Reset_Handler(void)
 {
-    uint32_t *src = &_sidata;
-    uint32_t *dst = &_sdata;
+    uint32_t* src = &_sidata;
+    uint32_t* dst = &_sdata;
 
     /* Copy .data segment from Flash to RAM */
     while (dst < &_edata) {
@@ -61,9 +104,11 @@ void Reset_Handler(void)
         *dst++ = 0U;
     }
 
+#if defined(__ARM_FP) && (__ARM_FP > 0)
     /* Enable Coprocessors CP10 & CP11 (FPU Hardware on ARMv8-M / ARMv7E-M) */
     *(volatile uint32_t*)0xE000ED88U |= (0xFU << 20);
     __asm__ volatile ("dsb \n isb");
+#endif
 
     /* Invoke application entry */
     (void)main();
@@ -92,7 +137,28 @@ const void* const g_vector_table[] = {
     SysTick_Handler
 };
 
-/* Minimal heap stub for newlib */
+/* Minimal syscall stubs for newlib */
+extern void bsp_console_putc(char c);
+
+int _write(int file, char* ptr, int len)
+{
+    (void)file;
+    if (ptr != NULL) {
+        for (int i = 0; i < len; i++) {
+            bsp_console_putc(ptr[i]);
+        }
+    }
+    return len;
+}
+
+int _read(int file, char* ptr, int len)
+{
+    (void)file;
+    (void)ptr;
+    (void)len;
+    return 0;
+}
+
 void* _sbrk(ptrdiff_t incr)
 {
     static uint8_t* s_heap_end = NULL;

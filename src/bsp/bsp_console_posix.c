@@ -20,6 +20,7 @@ static bool s_termios_saved = false;
 void bsp_console_init(void)
 {
     struct termios raw;
+    int flags;
 
     if (tcgetattr(STDIN_FILENO, &s_orig_termios) == 0) {
         s_termios_saved = true;
@@ -28,6 +29,12 @@ void bsp_console_init(void)
         raw.c_cc[VMIN] = 0;
         raw.c_cc[VTIME] = 0;
         (void)tcsetattr(STDIN_FILENO, TCSANOW, &raw);
+    }
+
+    /* Set non-blocking I/O flag on stdin */
+    flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    if (flags >= 0) {
+        (void)fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK);
     }
 
     /* Hide cursor */

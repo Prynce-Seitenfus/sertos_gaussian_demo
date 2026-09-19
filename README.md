@@ -47,39 +47,58 @@ sertos_gaussian_demo/
 
 ---
 
-## 3. Compilation & Execution (Windows Host / MinGW)
+## 3. Compilation & Execution
 
-### Prerequisites
-- GCC / MinGW-w64 (supporting C99)
-- CMake 3.10+
-- Pre-compiled SertOS library at `../sertos/lib/windows/libsertos_windows.a`
+The demonstration provides a unified `build.bat` script that compiles for the Windows host or any ARM Cortex bare-metal target:
 
-### Build Instructions (Automated Batch Script)
+### Quick Build (Unified Script)
 ```powershell
 cd C:\github\sertos_gaussian_demo
-.\build_host.bat
 
-# Optionally build and launch immediately:
-.\build_host.bat --run
+# Build everything (Host executables + all 4 ARM Cortex binaries)
+.\build.bat all
+
+# Build Windows host executable (build\sertos_gaussian_demo.exe)
+.\build.bat windows
+
+# Build POSIX host library & binary
+.\build.bat posix
+
+# Build all 4 ARM Cortex binaries (build\sertos_gaussian_demo_m*.elf)
+.\build.bat arm
+
+# Build a single ARM Cortex target (m0, m3, m4, or m33)
+.\build.bat m33
 ```
 
-### Build Instructions (CMake Alternative)
+### Running the Demo (`run.bat`)
+Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) script to execute either on the Windows host simulator, POSIX host simulator (WSL / Linux), or bare-metal in QEMU:
+
 ```powershell
-# 1. Build the SertOS Windows host library (if not already built)
-cd C:\github\sertos
-.\build_host.bat windows
+# Run Windows host demo (build\sertos_gaussian_demo.exe)
+.\run.bat
+.\run.bat windows
 
-# 2. Build the Gaussian Demonstration via CMake
-cd C:\github\sertos_gaussian_demo
-cmake -B build -G "MinGW Makefiles"
-cmake --build build
+# Run POSIX host simulator (via WSL / Linux)
+.\run.bat posix
+
+# Run ARM Cortex targets in QEMU emulator
+.\run.bat m33
+.\run.bat m4
+.\run.bat m3
+.\run.bat m0
+
+# Display help and supported targets
+.\run.bat -h
 ```
 
-### Running the Demo
-Launch the executable directly in Windows Terminal, Command Prompt, or PowerShell:
-```powershell
-.\build\sertos_gaussian_demo.exe
-```
+Supported targets:
+- **`windows`**: Native Windows Host (Win32 threads + Multimedia Timer) `[Default]`
+- **`posix`**: POSIX Multitasking Simulation (Pthreads + WSL / Linux)
+- **`m33` / `cortex-m33`**: ARM MPS2-AN505 (ARMv8-M Mainline)
+- **`m4` / `cortex-m4`**: ARM MPS2-AN386 (ARMv7E-M)
+- **`m3` / `cortex-m3`**: ARM MPS2-AN385 (ARMv7-M)
+- **`m0` / `cortex-m0`**: ARM MPS2-AN385 (ARMv6-M)
 
 ### Interactive Controls
 - **`[P]` or `[Space]`**: Pause or resume sample generation.
@@ -87,57 +106,8 @@ Launch the executable directly in Windows Terminal, Command Prompt, or PowerShel
 - **`[M]`**: Toggle between the compact stationary ANSI dashboard and the linear log stream mode (ideal for serial loggers / non-ANSI terminals).
 - **`[Q]` or `[Esc]`**: Gracefully shut down the scheduler, restore terminal cursor, and exit.
 
----
-
-## 4. Compilation & Execution (ARM Cortex-M33 / QEMU)
-
-The demonstration supports bare-metal cross-compilation targeting the **ARM Cortex-M33** core (ARMv8-M Mainline with hardware FPU and `PSPLIM` stack limits) and executes directly in **QEMU** emulating the **ARM MPS2-AN505** board.
-
-### Prerequisites
-- GNU Arm Embedded Toolchain (`arm-none-eabi-gcc`, `arm-none-eabi-size`, e.g. `C:\arm\13.2.1\bin`)
-- QEMU ARM System Emulator (`qemu-system-arm.exe`, e.g. `C:\Program Files\qemu`)
-- Pre-compiled SertOS Cortex-M33 library (`../sertos/lib/arm/libsertos_cortex_m33.a`)
-
-### Build Instructions
-Run the automated build script:
-```powershell
-cd C:\github\sertos_gaussian_demo
-.\build_m33.bat
-```
-This generates the standalone bare-metal ELF binary at:
-```text
-build\sertos_gaussian_demo_m33.elf
-```
-
-### Running over QEMU
-Launch QEMU with the MPS2-AN505 machine profile using [`run_qemu.bat`](file:///C:/github/sertos_gaussian_demo/run_qemu.bat), which accepts the desired Cortex target and/or custom ELF path in any argument order:
-```powershell
-# Run default (Cortex-M33 / build\sertos_gaussian_demo_m33.elf)
-.\run_qemu.bat
-
-# Explicitly specify Cortex target
-.\run_qemu.bat m33
-
-# Specify custom ELF path
-.\run_qemu.bat build\sertos_gaussian_demo_m33.elf
-
-# Specify both ELF and Cortex target (any order)
-.\run_qemu.bat build\sertos_gaussian_demo_m33.elf m33
-.\run_qemu.bat m33 build\sertos_gaussian_demo_m33.elf
-
-# Display help and supported targets
-.\run_qemu.bat -h
-```
-
-Supported Cortex targets and corresponding QEMU machines:
-- **`m33` / `cortex-m33`**: ARM MPS2-AN505 (ARMv8-M Mainline) `[Default]`
-- **`m4` / `cortex-m4`**: ARM MPS2-AN386 (ARMv7E-M)
-- **`m3` / `cortex-m3`**: ARM MPS2-AN385 (ARMv7-M)
-- **`m7` / `cortex-m7`**: ARM MPS2-AN500 (ARMv7E-M)
-- **`m0` / `cortex-m0`**: BBC micro:bit (ARMv6-M)
-
 > [!TIP]
-> **QEMU Control**: To terminate QEMU in non-graphical terminal mode, press `Ctrl+A` then `X`, or press `[Q]` in the demo UI.
+> **QEMU Control**: When running in QEMU, press `[Q]` in the demo UI or `Ctrl+A` then `X` to exit.
 
 ---
 
