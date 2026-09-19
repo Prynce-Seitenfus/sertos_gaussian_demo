@@ -15,6 +15,9 @@ int main(void)
 {
     SertosStatus status;
 
+    /* Initialize BSP console hardware (UART / standard I/O) */
+    bsp_console_init();
+
     /* Initialize SertOS scheduler and idle task */
     status = sertos_scheduler_init();
     if (status != SERTOS_STATUS_OK) {

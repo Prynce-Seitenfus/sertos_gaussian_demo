@@ -58,13 +58,15 @@ cd C:\github\sertos_gaussian_demo
 # Build everything (Host executables + all 8 ARM Cortex binaries)
 .\build.bat all
 
-# Build Windows host executable (build\sertos_gaussian_demo.exe)
+# Build MinGW-w64 host executable (build\mingw64\sertos_gaussian_demo.exe)
+.\build.bat mingw64
 .\build.bat windows
 
-# Build POSIX host library & binary
+# Build Linux host library & binary (build\linux\sertos_gaussian_demo)
+.\build.bat linux
 .\build.bat posix
 
-# Build all 8 ARM Cortex binaries (build\sertos_gaussian_demo_m*.elf)
+# Build all 8 ARM Cortex binaries (build\arm\sertos_gaussian_demo_m*.elf)
 .\build.bat arm
 
 # Build a single ARM Cortex target (m0, m0plus, m3, m4, m7, m23, m33, m55)
@@ -73,14 +75,16 @@ cd C:\github\sertos_gaussian_demo
 ```
 
 ### Running the Demo (`run.bat`)
-Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) script to execute either on the Windows host simulator, POSIX host simulator (WSL / Linux), or bare-metal in QEMU:
+Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) script to execute either on the MinGW-w64 Windows host simulator, Linux host simulator (WSL / Linux), or bare-metal in QEMU:
 
 ```powershell
-# Run Windows host demo (build\sertos_gaussian_demo.exe)
+# Run MinGW-w64 host demo (build\mingw64\sertos_gaussian_demo.exe)
 .\run.bat
+.\run.bat mingw64
 .\run.bat windows
 
-# Run POSIX host simulator (via WSL / Linux)
+# Run Linux host simulator (build\linux\sertos_gaussian_demo via WSL / Linux)
+.\run.bat linux
 .\run.bat posix
 
 # Run ARM Cortex targets in QEMU emulator
@@ -98,8 +102,8 @@ Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) scri
 ```
 
 Supported targets:
-- **`windows`**: Native Windows Host (Win32 threads + Multimedia Timer) `[Default]`
-- **`posix`**: POSIX Multitasking Simulation (Pthreads + WSL / Linux)
+- **`mingw64` / `windows`**: Native Windows Host (Win32 threads + Multimedia Timer) `[Default]`
+- **`linux` / `posix`**: Linux / POSIX Multitasking Simulation (Pthreads + WSL / Linux)
 - **`m0` / `cortex-m0`**: ARM MPS2-AN385 (ARMv6-M)
 - **`m0plus` / `cortex-m0plus`**: ARM MPS2-AN385 (ARMv6-M with VTOR)
 - **`m3` / `cortex-m3`**: ARM MPS2-AN385 (ARMv7-M)

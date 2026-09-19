@@ -10,6 +10,8 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <sys/stat.h>
+#include <errno.h>
 #include "sertos_scheduler.h"
 
 /* Linker script symbols */
@@ -137,7 +139,7 @@ const void* const g_vector_table[] = {
     SysTick_Handler
 };
 
-/* Minimal syscall stubs for newlib */
+/* Minimal POSIX syscall stubs for Newlib-nano bare-metal execution */
 extern void bsp_console_putc(char c);
 
 int _write(int file, char* ptr, int len)
@@ -157,6 +159,48 @@ int _read(int file, char* ptr, int len)
     (void)ptr;
     (void)len;
     return 0;
+}
+
+int _close(int file)
+{
+    (void)file;
+    return -1;
+}
+
+int _fstat(int file, struct stat* st)
+{
+    (void)file;
+    if (st != NULL) {
+        st->st_mode = S_IFCHR;
+    }
+    return 0;
+}
+
+int _isatty(int file)
+{
+    (void)file;
+    return 1;
+}
+
+int _lseek(int file, int ptr, int dir)
+{
+    (void)file;
+    (void)ptr;
+    (void)dir;
+    return 0;
+}
+
+int _getpid(void)
+{
+    return 1;
+}
+
+int _kill(int pid, int sig)
+{
+    (void)pid;
+    (void)sig;
+    errno = EINVAL;
+    return -1;
 }
 
 void* _sbrk(ptrdiff_t incr)

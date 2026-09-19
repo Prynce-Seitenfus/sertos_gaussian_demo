@@ -23,11 +23,12 @@ static char s_render_buf[4096];
  * @brief Tracks previous stream mode for clean screen clearing on transition.
  */
 static bool s_prev_stream_mode = false;
+static bool s_first_frame = true;
 
 /**
  * @brief ANSI escape sequence constants.
  */
-#define ANSI_CURSOR_HOME    "\033[H"
+#define ANSI_CURSOR_UP_24   "\033[24A\r"
 #define ANSI_CLEAR_SCREEN   "\033[2J"
 #define ANSI_CLEAR_DOWN     "\033[J"
 #define ANSI_RESET          "\033[0m"
@@ -36,21 +37,22 @@ static bool s_prev_stream_mode = false;
 #define ANSI_COLOR_GREEN    "\033[32m"
 #define ANSI_COLOR_YELLOW   "\033[33m"
 #define ANSI_COLOR_RED      "\033[31m"
-#define ANSI_COLOR_MAGENTA  "\033[35m"
 #define ANSI_COLOR_WHITE    "\033[37m"
 #define ANSI_COLOR_GRAY     "\033[90m"
+#define ANSI_SHOW_CURSOR    "\033[?25h"
+#define ANSI_HIDE_CURSOR    "\033[?25l"
 
 void terminal_ui_init(void)
 {
     bsp_console_init();
     s_prev_stream_mode = false;
-    /* Clear screen once upon startup */
-    bsp_console_puts(ANSI_CLEAR_SCREEN ANSI_CURSOR_HOME);
+    s_first_frame = true;
+    bsp_console_puts(ANSI_HIDE_CURSOR);
 }
 
 void terminal_ui_cleanup(void)
 {
-    bsp_console_puts(ANSI_RESET "\n");
+    bsp_console_puts(ANSI_RESET ANSI_SHOW_CURSOR "\r\n\r\n");
     bsp_console_cleanup();
 }
 
@@ -104,10 +106,18 @@ void terminal_ui_render(const GaussianState* state)
         return;
     }
 
-    /* Transitioning back from stream mode to dashboard: clear screen */
+    /* Transitioning back from stream mode to dashboard */
     if (s_prev_stream_mode) {
-        bsp_console_puts(ANSI_CLEAR_SCREEN);
+        s_first_frame = true;
         s_prev_stream_mode = false;
+    }
+
+    /* Move cursor up to overwrite previous dashboard frame without clearing banner above */
+    if (!s_first_frame) {
+        offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
+            ANSI_CURSOR_UP_24);
+    } else {
+        s_first_frame = false;
     }
 
     /* Identify peak bin count for dynamic normalization */
@@ -127,7 +137,6 @@ void terminal_ui_render(const GaussianState* state)
 
     /* Line 1: Compact Telemetry Header & Moments (width ~71 chars, strictly < 80) */
     offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
-        ANSI_CURSOR_HOME
         ANSI_BOLD ANSI_COLOR_CYAN "SertOS" ANSI_RESET
         " | %s%-7s" ANSI_RESET
         " | " ANSI_BOLD "N:" ANSI_RESET " " ANSI_COLOR_WHITE "%-6u" ANSI_RESET
@@ -183,12 +192,11 @@ void terminal_ui_render(const GaussianState* state)
             ANSI_RESET "|\n");
     }
 
-    /* Line 24: Interactive Controls & Clear Remainder (width 72 chars, total lines = 24) */
+    /* Line 24: Interactive Controls & Instructions (width 72 chars, total lines = 24) */
     offset += (size_t)snprintf(s_render_buf + offset, sizeof(s_render_buf) - offset,
         ANSI_BOLD "[CONTROLS]" ANSI_RESET
-        "  [P] Pause/Resume    [R] Reset    [M] Stream Mode    [Q] Exit Demo"
-        ANSI_RESET
-        ANSI_CLEAR_DOWN);
+        "  [P] Pause/Resume    [R] Reset    [M] Stream Mode    [Q] Exit Demo\n"
+        ANSI_RESET);
 
     bsp_console_puts(s_render_buf);
 }

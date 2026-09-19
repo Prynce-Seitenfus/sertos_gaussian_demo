@@ -7,7 +7,7 @@ pushd "%SCRIPT_DIR%"
 
 :: -----------------------------------------------------------------------------
 :: Parse Arguments
-:: Syntax: build.bat [host|arm|all|windows|m0|m3|m4|m33] [toolchain_path]
+:: Syntax: build.bat [all|host|windows|posix|arm|m0|m0plus|m3|m4|m7|m23|m33|m55] [toolchain_path]
 :: -----------------------------------------------------------------------------
 set "CHOSEN_TARGET="
 set "CUSTOM_TOOLCHAIN="
@@ -20,10 +20,14 @@ for %%A in ("%~1" "%~2") do (
 
         if /i "%%~A"=="host" (
             set "CHOSEN_TARGET=host"
+        ) else if /i "%%~A"=="mingw64" (
+            set "CHOSEN_TARGET=mingw64"
         ) else if /i "%%~A"=="windows" (
-            set "CHOSEN_TARGET=windows"
+            set "CHOSEN_TARGET=mingw64"
+        ) else if /i "%%~A"=="linux" (
+            set "CHOSEN_TARGET=linux"
         ) else if /i "%%~A"=="posix" (
-            set "CHOSEN_TARGET=posix"
+            set "CHOSEN_TARGET=linux"
         ) else if /i "%%~A"=="arm" (
             set "CHOSEN_TARGET=arm"
         ) else if /i "%%~A"=="all" (
@@ -84,6 +88,9 @@ if not defined CHOSEN_TARGET (
 :: Common Paths and Build Directories
 :: -----------------------------------------------------------------------------
 if not exist "build" mkdir "build"
+if not exist "build\mingw64" mkdir "build\mingw64"
+if not exist "build\arm" mkdir "build\arm"
+if not exist "build\linux" mkdir "build\linux"
 
 set "SERTOS_DIR=..\sertos"
 set "COMMON_INCLUDES=-Iinc -I%SERTOS_DIR%\inc -I%SERTOS_DIR%\port -I%SERTOS_DIR%\modules\ring_buffer -I%SERTOS_DIR%\modules\linked_list -I%SERTOS_DIR%\modules\bitmap -I%SERTOS_DIR%\modules\atomic"
@@ -96,8 +103,12 @@ set "BUILD_FAIL=0"
 :: -----------------------------------------------------------------------------
 if "%CHOSEN_TARGET%"=="host" (
     call :build_host_app
+) else if "%CHOSEN_TARGET%"=="mingw64" (
+    call :build_host_app
 ) else if "%CHOSEN_TARGET%"=="windows" (
     call :build_host_app
+) else if "%CHOSEN_TARGET%"=="linux" (
+    call :build_posix_app
 ) else if "%CHOSEN_TARGET%"=="posix" (
     call :build_posix_app
 ) else if "%CHOSEN_TARGET%"=="arm" (
@@ -153,7 +164,9 @@ if defined CUSTOM_TOOLCHAIN (
 )
 
 if not defined HOST_TOOLCHAIN (
-    if exist "C:\mingw64\gcc-13.2.0\mingw64\bin\gcc.exe" (
+    if exist "C:\toolchains\mingw64\13.2.0\bin\gcc.exe" (
+        set "HOST_TOOLCHAIN=C:\toolchains\mingw64\13.2.0\bin"
+    ) else if exist "C:\mingw64\gcc-13.2.0\mingw64\bin\gcc.exe" (
         set "HOST_TOOLCHAIN=C:\mingw64\gcc-13.2.0\mingw64\bin"
     ) else if exist "C:\mingw64\bin\gcc.exe" (
         set "HOST_TOOLCHAIN=C:\mingw64\bin"
@@ -182,11 +195,12 @@ if "%HOST_TOOLCHAIN:~-1%"=="\" set "HOST_TOOLCHAIN=%HOST_TOOLCHAIN:~0,-1%"
 set "HOST_CC=%HOST_TOOLCHAIN%\gcc.exe"
 set "HOST_SIZE=%HOST_TOOLCHAIN%\size.exe"
 
-set "SERTOS_HOST_LIB=%SERTOS_DIR%\lib\windows\libsertos_windows.a"
+set "SERTOS_HOST_LIB=%SERTOS_DIR%\lib\mingw64\libsertos_mingw64.a"
+if not exist "!SERTOS_HOST_LIB!" set "SERTOS_HOST_LIB=%SERTOS_DIR%\lib\windows\libsertos_windows.a"
 if not exist "!SERTOS_HOST_LIB!" (
-    echo [INFO] SertOS Windows host library not found. Building now...
+    echo [INFO] SertOS MinGW-w64 host library not found. Building now...
     pushd "%SERTOS_DIR%"
-    call build.bat host "%HOST_TOOLCHAIN%"
+    call build.bat mingw64 "%HOST_TOOLCHAIN%"
     popd
     if not exist "!SERTOS_HOST_LIB!" (
         echo [ERROR] Failed to compile !SERTOS_HOST_LIB!
@@ -195,7 +209,7 @@ if not exist "!SERTOS_HOST_LIB!" (
     )
 )
 
-set "TARGET_EXE=build\sertos_gaussian_demo.exe"
+set "TARGET_EXE=build\mingw64\sertos_gaussian_demo.exe"
 
 echo.
 echo ============================================================
@@ -241,7 +255,9 @@ if defined CUSTOM_TOOLCHAIN (
 )
 
 if not defined ARM_TOOLCHAIN (
-    if exist "C:\arm\13.2.1\bin\arm-none-eabi-gcc.exe" (
+    if exist "C:\toolchains\arm\13.2.1\bin\arm-none-eabi-gcc.exe" (
+        set "ARM_TOOLCHAIN=C:\toolchains\arm\13.2.1\bin"
+    ) else if exist "C:\arm\13.2.1\bin\arm-none-eabi-gcc.exe" (
         set "ARM_TOOLCHAIN=C:\arm\13.2.1\bin"
     )
 )
@@ -268,42 +284,42 @@ set "ARM_SIZE=%ARM_TOOLCHAIN%\arm-none-eabi-size.exe"
 
 if "%ARM_TARGET%"=="cortex-m0" (
     set "ARCH_FLAGS=-mcpu=cortex-m0 -mthumb"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m0.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m0.elf"
     set "LDSCRIPT=bsp\mps2_generic.ld"
     set "LIB_NAME=libsertos_cortex_m0.a"
 ) else if "%ARM_TARGET%"=="cortex-m0plus" (
     set "ARCH_FLAGS=-mcpu=cortex-m0plus -mthumb"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m0plus.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m0plus.elf"
     set "LDSCRIPT=bsp\mps2_generic.ld"
     set "LIB_NAME=libsertos_cortex_m0plus.a"
 ) else if "%ARM_TARGET%"=="cortex-m3" (
     set "ARCH_FLAGS=-mcpu=cortex-m3 -mthumb"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m3.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m3.elf"
     set "LDSCRIPT=bsp\mps2_generic.ld"
     set "LIB_NAME=libsertos_cortex_m3.a"
 ) else if "%ARM_TARGET%"=="cortex-m4" (
     set "ARCH_FLAGS=-mcpu=cortex-m4 -mthumb -mfpu=fpv4-sp-d16 -mfloat-abi=hard"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m4.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m4.elf"
     set "LDSCRIPT=bsp\mps2_generic.ld"
     set "LIB_NAME=libsertos_cortex_m4.a"
 ) else if "%ARM_TARGET%"=="cortex-m7" (
     set "ARCH_FLAGS=-mcpu=cortex-m7 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m7.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m7.elf"
     set "LDSCRIPT=bsp\mps2_generic.ld"
     set "LIB_NAME=libsertos_cortex_m7.a"
 ) else if "%ARM_TARGET%"=="cortex-m23" (
     set "ARCH_FLAGS=-mcpu=cortex-m23 -mthumb"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m23.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m23.elf"
     set "LDSCRIPT=bsp\mps2_an505.ld"
     set "LIB_NAME=libsertos_cortex_m23.a"
 ) else if "%ARM_TARGET%"=="cortex-m33" (
     set "ARCH_FLAGS=-mcpu=cortex-m33 -mthumb -mfpu=fpv5-sp-d16 -mfloat-abi=hard"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m33.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m33.elf"
     set "LDSCRIPT=bsp\mps2_an505.ld"
     set "LIB_NAME=libsertos_cortex_m33.a"
 ) else if "%ARM_TARGET%"=="cortex-m55" (
     set "ARCH_FLAGS=-mcpu=cortex-m55 -mthumb -mfpu=fpv5-d16 -mfloat-abi=hard -DCONFIG_TARGET_CORTEX_M55=1"
-    set "TARGET_ELF=build\sertos_gaussian_demo_m55.elf"
+    set "TARGET_ELF=build\arm\sertos_gaussian_demo_m55.elf"
     set "LDSCRIPT=bsp\mps3_an547.ld"
     set "LIB_NAME=libsertos_cortex_m55.a"
 )
@@ -330,7 +346,7 @@ echo ============================================================
 
 set "ARM_SRCS=%APP_CORE_SRCS% src\bsp\bsp_console_uart_stub.c src\bsp\startup_arm_cortex_m.c"
 set "ARM_CFLAGS=-O2 -Wall -Wextra -std=c99 -ffunction-sections -fdata-sections"
-set "ARM_SPECS=--specs=nano.specs --specs=nosys.specs -u _printf_float"
+set "ARM_SPECS=--specs=nano.specs -u _printf_float"
 
 "%ARM_CC%" !ARCH_FLAGS! %ARM_CFLAGS% %ARM_SPECS% %COMMON_INCLUDES% -Wl,--gc-sections -T !LDSCRIPT! %ARM_SRCS% "!SERTOS_ARM_LIB!" -lm -o "!TARGET_ELF!"
 if !ERRORLEVEL! neq 0 (
@@ -356,7 +372,9 @@ if defined CUSTOM_TOOLCHAIN (
 )
 
 if not defined HOST_TOOLCHAIN (
-    if exist "C:\mingw64\gcc-13.2.0\mingw64\bin\gcc.exe" (
+    if exist "C:\toolchains\mingw64\13.2.0\bin\gcc.exe" (
+        set "HOST_TOOLCHAIN=C:\toolchains\mingw64\13.2.0\bin"
+    ) else if exist "C:\mingw64\gcc-13.2.0\mingw64\bin\gcc.exe" (
         set "HOST_TOOLCHAIN=C:\mingw64\gcc-13.2.0\mingw64\bin"
     ) else if exist "C:\mingw64\bin\gcc.exe" (
         set "HOST_TOOLCHAIN=C:\mingw64\bin"
@@ -382,14 +400,15 @@ if not defined HOST_TOOLCHAIN (
 
 if "%HOST_TOOLCHAIN:~-1%"=="\" set "HOST_TOOLCHAIN=%HOST_TOOLCHAIN:~0,-1%"
 
-set "SERTOS_POSIX_LIB=%SERTOS_DIR%\lib\posix\libsertos_posix.a"
+set "SERTOS_POSIX_LIB=%SERTOS_DIR%\lib\linux\libsertos_linux.a"
+if not exist "!SERTOS_POSIX_LIB!" set "SERTOS_POSIX_LIB=%SERTOS_DIR%\lib\posix\libsertos_posix.a"
 echo.
 echo ============================================================
-echo [BUILD] Building SertOS POSIX Host Library...
+echo [BUILD] Building SertOS Linux Host Library...
 echo [TOOLCHAIN] %HOST_TOOLCHAIN%
 echo ============================================================
 pushd "%SERTOS_DIR%"
-call build.bat posix "%HOST_TOOLCHAIN%"
+call build.bat linux "%HOST_TOOLCHAIN%"
 popd
 if not exist "!SERTOS_POSIX_LIB!" (
     echo [ERROR] Failed to compile !SERTOS_POSIX_LIB!
@@ -399,10 +418,11 @@ if not exist "!SERTOS_POSIX_LIB!" (
 
 echo.
 echo ============================================================
-echo [SUCCESS] POSIX kernel library ready: %SERTOS_POSIX_LIB%
-echo [INFO] Full demo POSIX binary build is supported natively on
-echo        Linux / macOS / WSL using CMake or GCC termios.
-echo        On Windows host, build with: build.bat windows
+echo [SUCCESS] Linux kernel library ready: %SERTOS_POSIX_LIB%
+echo [INFO] Full demo Linux binary build is supported natively on
+echo        Linux / macOS / WSL using CMake or GCC termios:
+echo        cmake -B build/linux && cmake --build build/linux
+echo        On Windows host, build with: build.bat mingw64
 echo ============================================================
 goto :eof
 
@@ -414,29 +434,34 @@ echo.
 echo Usage: build.bat [TARGET] [TOOLCHAIN_PATH]
 echo.
 echo Targets:
-echo   all         Build Windows host and all 8 ARM Cortex binaries [Default]
-echo   host        Build Windows host executable   (build\sertos_gaussian_demo.exe)
-echo   windows     Build Windows host executable   (build\sertos_gaussian_demo.exe)
-echo   posix       Build POSIX host binary         (build\sertos_gaussian_demo_posix)
-echo   arm         Build all 8 ARM Cortex binaries (build\sertos_gaussian_demo_m*.elf)
-echo   m0          Build ARM Cortex-M0 binary      (build\sertos_gaussian_demo_m0.elf)
-echo   m0plus/m0+  Build ARM Cortex-M0+ binary     (build\sertos_gaussian_demo_m0plus.elf)
-echo   m3          Build ARM Cortex-M3 binary      (build\sertos_gaussian_demo_m3.elf)
-echo   m4          Build ARM Cortex-M4 binary      (build\sertos_gaussian_demo_m4.elf)
-echo   m7          Build ARM Cortex-M7 binary      (build\sertos_gaussian_demo_m7.elf)
-echo   m23         Build ARM Cortex-M23 binary     (build\sertos_gaussian_demo_m23.elf)
-echo   m33         Build ARM Cortex-M33 binary     (build\sertos_gaussian_demo_m33.elf)
-echo   m55         Build ARM Cortex-M55 binary     (build\sertos_gaussian_demo_m55.elf)
+echo   all         Build mingw64 host and all 8 ARM Cortex binaries [Default]
+echo   mingw64     Build MinGW-w64 host executable (build\mingw64\sertos_gaussian_demo.exe) [alias: windows]
+echo   linux       Build Linux host binary         (build\linux\sertos_gaussian_demo) [alias: posix]
+echo   arm         Build all 8 ARM Cortex binaries (build\arm\sertos_gaussian_demo_m*.elf)
+echo   m0          Build ARM Cortex-M0 binary      (build\arm\sertos_gaussian_demo_m0.elf)
+echo   m0plus/m0+  Build ARM Cortex-M0+ binary     (build\arm\sertos_gaussian_demo_m0plus.elf)
+echo   m3          Build ARM Cortex-M3 binary      (build\arm\sertos_gaussian_demo_m3.elf)
+echo   m4          Build ARM Cortex-M4 binary      (build\arm\sertos_gaussian_demo_m4.elf)
+echo   m7          Build ARM Cortex-M7 binary      (build\arm\sertos_gaussian_demo_m7.elf)
+echo   m23         Build ARM Cortex-M23 binary     (build\arm\sertos_gaussian_demo_m23.elf)
+echo   m33         Build ARM Cortex-M33 binary     (build\arm\sertos_gaussian_demo_m33.elf)
+echo   m55         Build ARM Cortex-M55 binary     (build\arm\sertos_gaussian_demo_m55.elf)
 echo.
 echo Examples:
 echo   build.bat
-echo   build.bat windows
-echo   build.bat posix
+echo   build.bat mingw64
+echo   build.bat linux
 echo   build.bat arm
+echo   build.bat m0
+echo   build.bat m0plus
+echo   build.bat m3
+echo   build.bat m4
 echo   build.bat m7
+echo   build.bat m23
+echo   build.bat m33
 echo   build.bat m55
-echo   build.bat windows C:\mingw64\gcc-13.2.0\mingw64\bin
-echo   build.bat arm     C:\arm\13.2.1\bin
+echo   build.bat windows C:\toolchains\mingw64\13.2.0\bin
+echo   build.bat arm     C:\toolchains\arm\13.2.1\bin
 echo.
 popd
 endlocal

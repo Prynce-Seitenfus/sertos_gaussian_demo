@@ -27,20 +27,20 @@
 #define UART_CTRL_TXEN      (1U << 0U)
 #define UART_CTRL_RXEN      (1U << 1U)
 
-static volatile uint32_t* s_uart_data = (volatile uint32_t*)(CMSDK_UART0_AN505 + UART_DATA_OFFSET);
-static volatile uint32_t* s_uart_state = (volatile uint32_t*)(CMSDK_UART0_AN505 + UART_STATE_OFFSET);
+#if defined(CONFIG_TARGET_CORTEX_M55) || defined(__ARM_ARCH_8_1M_MAIN__)
+#define CMSDK_UART0_BASE    CMSDK_UART0_AN547
+#elif defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
+#define CMSDK_UART0_BASE    CMSDK_UART0_AN505
+#else
+#define CMSDK_UART0_BASE    CMSDK_UART0_AN385
+#endif
+
+static volatile uint32_t* s_uart_data = (volatile uint32_t*)(CMSDK_UART0_BASE + UART_DATA_OFFSET);
+static volatile uint32_t* s_uart_state = (volatile uint32_t*)(CMSDK_UART0_BASE + UART_STATE_OFFSET);
 
 void bsp_console_init(void)
 {
-    uint32_t base;
-
-#if defined(CONFIG_TARGET_CORTEX_M55) || defined(__ARM_ARCH_8_1M_MAIN__)
-    base = CMSDK_UART0_AN547;
-#elif defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
-    base = CMSDK_UART0_AN505;
-#else
-    base = CMSDK_UART0_AN385;
-#endif
+    uint32_t base = CMSDK_UART0_BASE;
 
     s_uart_data  = (volatile uint32_t*)(base + UART_DATA_OFFSET);
     s_uart_state = (volatile uint32_t*)(base + UART_STATE_OFFSET);
@@ -51,7 +51,10 @@ void bsp_console_init(void)
 
 void bsp_console_putc(char c)
 {
-    if (s_uart_data != NULL) {
+    if ((s_uart_data != NULL) && (s_uart_state != NULL)) {
+        while ((*s_uart_state & UART_STATE_TXFULL) != 0U) {
+            /* Wait for transmit buffer ready */
+        }
         *s_uart_data = (uint32_t)(uint8_t)c;
     }
 }
@@ -90,7 +93,14 @@ bool bsp_console_poll_char(char* out_char)
 
 void bsp_console_cleanup(void)
 {
-    /* Trigger clean QEMU exit via AIRCR system reset (with -no-reboot) */
+    /* Allow UART TX buffer to flush out to host terminal */
+    for (volatile uint32_t i = 0U; i < 200000U; i++) {
+        __asm__ volatile ("nop");
+    }
+
+    /* Request CPU Reset via AIRCR (VECTKEY | SYSRESETREQ).
+     * Under QEMU with -no-reboot, this triggers an immediate, clean emulator shutdown.
+     */
     *(volatile uint32_t*)0xE000ED0CU = 0x05FA0000U | (1U << 2U);
     while (1) {
         __asm__ volatile ("wfi");

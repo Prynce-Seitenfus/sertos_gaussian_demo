@@ -180,24 +180,25 @@ void gaussian_task_visualizer_entry(void* param)
 
     terminal_ui_init();
 
-    while (!s_app_state.should_terminate) {
+    while (1) {
         /* Periodic frame delay: 80 ms = 12.5 FPS */
         (void)sertos_scheduler_delay(GAUSSIAN_VIS_DELAY_TICKS);
 
-        /* Capture atomic state snapshot under mutex */
+        /* Capture atomic state snapshot under mutex to prevent partial frames */
         if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
             (void)memcpy(&snapshot, &s_app_state, sizeof(GaussianState));
             (void)sertos_mutex_unlock(s_mutex_handle);
         }
 
-        terminal_ui_render(&snapshot);
-
         if (snapshot.should_terminate) {
             break;
         }
+
+        terminal_ui_render(&snapshot);
     }
 
     terminal_ui_cleanup();
+    sertos_scheduler_stop();
     (void)sertos_task_delete(NULL);
 }
 
@@ -228,18 +229,12 @@ void gaussian_task_input_entry(void* param)
                     s_app_state.stream_mode = !s_app_state.stream_mode;
                     (void)sertos_mutex_unlock(s_mutex_handle);
                 }
-            } else if ((ch == 'q') || (ch == 'Q') || (ch == 27)) {
+            } else if ((ch == 'q') || (ch == 'Q')) {
+                (void)sertos_timer_stop(s_timer_handle);
                 if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
                     s_app_state.should_terminate = true;
                     (void)sertos_mutex_unlock(s_mutex_handle);
                 }
-                (void)sertos_timer_stop(s_timer_handle);
-                terminal_ui_cleanup();
-                bsp_console_puts("\r\n[SertOS] Clean shutdown requested. Exiting...\r\n");
-                for (volatile uint32_t d = 0U; d < 50000U; d++) {
-                    __asm__ volatile ("nop");
-                }
-                sertos_scheduler_stop();
                 break;
             }
         }

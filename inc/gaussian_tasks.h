@@ -38,9 +38,9 @@
 #define GAUSSIAN_TIMER_PERIOD_TICKS     (20U)
 
 /**
- * @brief Visualizer frame interval (4 FPS = 250 ms / 250 ticks).
+ * @brief Visualizer frame interval (12.5 FPS = 80 ms / 80 ticks).
  */
-#define GAUSSIAN_VIS_DELAY_TICKS        (250U)
+#define GAUSSIAN_VIS_DELAY_TICKS        (80U)
 
 /**
  * @brief Input polling interval (50 ms / 50 ticks).
