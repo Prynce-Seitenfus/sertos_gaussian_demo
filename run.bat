@@ -27,22 +27,42 @@ for %%A in (%*) do (
         set "TARGET_MODE=posix"
     ) else if /i "%%~A"=="linux" (
         set "TARGET_MODE=posix"
-    ) else if /i "%%~A"=="m33" (
-        set "TARGET_MODE=m33"
-    ) else if /i "%%~A"=="cortex-m33" (
-        set "TARGET_MODE=m33"
-    ) else if /i "%%~A"=="m4" (
-        set "TARGET_MODE=m4"
-    ) else if /i "%%~A"=="cortex-m4" (
-        set "TARGET_MODE=m4"
-    ) else if /i "%%~A"=="m3" (
-        set "TARGET_MODE=m3"
-    ) else if /i "%%~A"=="cortex-m3" (
-        set "TARGET_MODE=m3"
     ) else if /i "%%~A"=="m0" (
         set "TARGET_MODE=m0"
     ) else if /i "%%~A"=="cortex-m0" (
         set "TARGET_MODE=m0"
+    ) else if /i "%%~A"=="m0plus" (
+        set "TARGET_MODE=m0plus"
+    ) else if /i "%%~A"=="m0+" (
+        set "TARGET_MODE=m0plus"
+    ) else if /i "%%~A"=="cortex-m0plus" (
+        set "TARGET_MODE=m0plus"
+    ) else if /i "%%~A"=="cortex-m0+" (
+        set "TARGET_MODE=m0plus"
+    ) else if /i "%%~A"=="m3" (
+        set "TARGET_MODE=m3"
+    ) else if /i "%%~A"=="cortex-m3" (
+        set "TARGET_MODE=m3"
+    ) else if /i "%%~A"=="m4" (
+        set "TARGET_MODE=m4"
+    ) else if /i "%%~A"=="cortex-m4" (
+        set "TARGET_MODE=m4"
+    ) else if /i "%%~A"=="m7" (
+        set "TARGET_MODE=m7"
+    ) else if /i "%%~A"=="cortex-m7" (
+        set "TARGET_MODE=m7"
+    ) else if /i "%%~A"=="m23" (
+        set "TARGET_MODE=m23"
+    ) else if /i "%%~A"=="cortex-m23" (
+        set "TARGET_MODE=m23"
+    ) else if /i "%%~A"=="m33" (
+        set "TARGET_MODE=m33"
+    ) else if /i "%%~A"=="cortex-m33" (
+        set "TARGET_MODE=m33"
+    ) else if /i "%%~A"=="m55" (
+        set "TARGET_MODE=m55"
+    ) else if /i "%%~A"=="cortex-m55" (
+        set "TARGET_MODE=m55"
     ) else if /i "%%~xA"==".exe" (
         set "TARGET_MODE=windows"
         set "USER_FILE=%%~A"
@@ -141,22 +161,38 @@ if not errorlevel 1 (
 :run_qemu
 set "CORTEX_ARCH=%~1"
 
-if "%CORTEX_ARCH%"=="m33" (
-    set "QEMU_MACHINE=mps2-an505"
-    set "CORTEX_DESC=Cortex-M33 (ARMv8-M Mainline)"
-    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m33.elf"
-) else if "%CORTEX_ARCH%"=="m4" (
-    set "QEMU_MACHINE=mps2-an386"
-    set "CORTEX_DESC=Cortex-M4 (ARMv7E-M)"
-    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m4.elf"
+if "%CORTEX_ARCH%"=="m0" (
+    set "QEMU_MACHINE=mps2-an385"
+    set "CORTEX_DESC=Cortex-M0 (ARMv6-M on MPS2)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m0.elf"
+) else if "%CORTEX_ARCH%"=="m0plus" (
+    set "QEMU_MACHINE=mps2-an385"
+    set "CORTEX_DESC=Cortex-M0+ (ARMv6-M on MPS2)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m0plus.elf"
 ) else if "%CORTEX_ARCH%"=="m3" (
     set "QEMU_MACHINE=mps2-an385"
     set "CORTEX_DESC=Cortex-M3 (ARMv7-M)"
     if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m3.elf"
-) else if "%CORTEX_ARCH%"=="m0" (
-    set "QEMU_MACHINE=mps2-an385"
-    set "CORTEX_DESC=Cortex-M0 (ARMv6-M on MPS2)"
-    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m0.elf"
+) else if "%CORTEX_ARCH%"=="m4" (
+    set "QEMU_MACHINE=mps2-an386"
+    set "CORTEX_DESC=Cortex-M4 (ARMv7E-M)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m4.elf"
+) else if "%CORTEX_ARCH%"=="m7" (
+    set "QEMU_MACHINE=mps2-an500"
+    set "CORTEX_DESC=Cortex-M7 (ARMv7E-M DP-FPU)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m7.elf"
+) else if "%CORTEX_ARCH%"=="m23" (
+    set "QEMU_MACHINE=mps2-an505"
+    set "CORTEX_DESC=Cortex-M23 (ARMv8-M Baseline)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m23.elf"
+) else if "%CORTEX_ARCH%"=="m33" (
+    set "QEMU_MACHINE=mps2-an505"
+    set "CORTEX_DESC=Cortex-M33 (ARMv8-M Mainline)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m33.elf"
+) else if "%CORTEX_ARCH%"=="m55" (
+    set "QEMU_MACHINE=mps3-an547"
+    set "CORTEX_DESC=Cortex-M55 (ARMv8.1-M Helium)"
+    if not defined USER_FILE set "USER_FILE=build\sertos_gaussian_demo_m55.elf"
 )
 
 if not exist "!USER_FILE!" (
@@ -169,7 +205,9 @@ if not exist "!USER_FILE!" (
 )
 
 set "QEMU_BIN="
-if exist "C:\Program Files\qemu\qemu-system-arm.exe" (
+if exist "C:\qemu\qemu-system-arm.exe" (
+    set "QEMU_BIN=C:\qemu\qemu-system-arm.exe"
+) else if exist "C:\Program Files\qemu\qemu-system-arm.exe" (
     set "QEMU_BIN=C:\Program Files\qemu\qemu-system-arm.exe"
 ) else (
     where qemu-system-arm.exe >nul 2>nul
@@ -182,7 +220,7 @@ if exist "C:\Program Files\qemu\qemu-system-arm.exe" (
 
 if not defined QEMU_BIN (
     echo [ERROR] qemu-system-arm.exe not found!
-    echo Please ensure QEMU is installed at C:\Program Files\qemu or in your PATH.
+    echo Please ensure QEMU is installed at C:\qemu or in your PATH.
     exit /b 1
 )
 
@@ -209,17 +247,21 @@ echo.
 echo Targets:
 echo   host, windows  Run Windows host application (build\sertos_gaussian_demo.exe) [Default]
 echo   posix, linux   Run POSIX / Linux environment instructions / WSL runner
-echo   m33            Run ARM Cortex-M33 in QEMU   (build\sertos_gaussian_demo_m33.elf)
-echo   m4             Run ARM Cortex-M4 in QEMU    (build\sertos_gaussian_demo_m4.elf)
-echo   m3             Run ARM Cortex-M3 in QEMU    (build\sertos_gaussian_demo_m3.elf)
 echo   m0             Run ARM Cortex-M0 in QEMU    (build\sertos_gaussian_demo_m0.elf)
+echo   m0plus/m0+     Run ARM Cortex-M0+ in QEMU   (build\sertos_gaussian_demo_m0plus.elf)
+echo   m3             Run ARM Cortex-M3 in QEMU    (build\sertos_gaussian_demo_m3.elf)
+echo   m4             Run ARM Cortex-M4 in QEMU    (build\sertos_gaussian_demo_m4.elf)
+echo   m7             Run ARM Cortex-M7 in QEMU    (build\sertos_gaussian_demo_m7.elf)
+echo   m23            Run ARM Cortex-M23 in QEMU   (build\sertos_gaussian_demo_m23.elf)
+echo   m33            Run ARM Cortex-M33 in QEMU   (build\sertos_gaussian_demo_m33.elf)
+echo   m55            Run ARM Cortex-M55 in QEMU   (build\sertos_gaussian_demo_m55.elf)
 echo.
 echo Examples:
 echo   run.bat
 echo   run.bat windows
 echo   run.bat posix
-echo   run.bat m33
-echo   run.bat m0
+echo   run.bat m7
+echo   run.bat m55
 echo   run.bat build\sertos_gaussian_demo_m4.elf
 echo.
 popd

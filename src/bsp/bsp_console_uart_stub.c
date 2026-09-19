@@ -13,8 +13,9 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-#define CMSDK_UART0_AN505   (0x40200000U) /* Cortex-M33 (MPS2-AN505) */
-#define CMSDK_UART0_AN385   (0x40004000U) /* Cortex-M3/M4 (MPS2-AN385 / AN386) */
+#define CMSDK_UART0_AN547   (0x49303000U) /* Cortex-M55 (MPS3-AN547) */
+#define CMSDK_UART0_AN505   (0x40200000U) /* Cortex-M23 / Cortex-M33 (MPS2-AN505) */
+#define CMSDK_UART0_AN385   (0x40004000U) /* Cortex-M0/M0+/M3/M4/M7 (MPS2-AN385 / AN386 / AN500) */
 
 #define UART_DATA_OFFSET    (0x00U)
 #define UART_STATE_OFFSET   (0x04U)
@@ -31,14 +32,14 @@ static volatile uint32_t* s_uart_state = (volatile uint32_t*)(CMSDK_UART0_AN505 
 
 void bsp_console_init(void)
 {
-    uint32_t base = CMSDK_UART0_AN505;
+    uint32_t base;
 
-#if defined(__ARM_ARCH_7M__) || defined(__ARM_ARCH_7EM__)
-    base = CMSDK_UART0_AN385;
-#elif defined(__ARM_ARCH_6M__)
-    base = CMSDK_UART0_AN385;
-#else
+#if defined(CONFIG_TARGET_CORTEX_M55) || defined(__ARM_ARCH_8_1M_MAIN__)
+    base = CMSDK_UART0_AN547;
+#elif defined(__ARM_ARCH_8M_MAIN__) || defined(__ARM_ARCH_8M_BASE__)
     base = CMSDK_UART0_AN505;
+#else
+    base = CMSDK_UART0_AN385;
 #endif
 
     s_uart_data  = (volatile uint32_t*)(base + UART_DATA_OFFSET);
@@ -77,8 +78,11 @@ bool bsp_console_poll_char(char* out_char)
     }
 
     if ((*s_uart_state & UART_STATE_RXFULL) != 0U) {
-        *out_char = (char)(*s_uart_data & 0xFFU);
-        return true;
+        char ch = (char)(*s_uart_data & 0xFFU);
+        if ((ch != 0) && (ch != (char)0xFF)) {
+            *out_char = ch;
+            return true;
+        }
     }
 
     return false;

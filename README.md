@@ -55,7 +55,7 @@ The demonstration provides a unified `build.bat` script that compiles for the Wi
 ```powershell
 cd C:\github\sertos_gaussian_demo
 
-# Build everything (Host executables + all 4 ARM Cortex binaries)
+# Build everything (Host executables + all 8 ARM Cortex binaries)
 .\build.bat all
 
 # Build Windows host executable (build\sertos_gaussian_demo.exe)
@@ -64,11 +64,12 @@ cd C:\github\sertos_gaussian_demo
 # Build POSIX host library & binary
 .\build.bat posix
 
-# Build all 4 ARM Cortex binaries (build\sertos_gaussian_demo_m*.elf)
+# Build all 8 ARM Cortex binaries (build\sertos_gaussian_demo_m*.elf)
 .\build.bat arm
 
-# Build a single ARM Cortex target (m0, m3, m4, or m33)
-.\build.bat m33
+# Build a single ARM Cortex target (m0, m0plus, m3, m4, m7, m23, m33, m55)
+.\build.bat m7
+.\build.bat m55
 ```
 
 ### Running the Demo (`run.bat`)
@@ -83,10 +84,14 @@ Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) scri
 .\run.bat posix
 
 # Run ARM Cortex targets in QEMU emulator
-.\run.bat m33
-.\run.bat m4
-.\run.bat m3
 .\run.bat m0
+.\run.bat m0plus
+.\run.bat m3
+.\run.bat m4
+.\run.bat m7
+.\run.bat m23
+.\run.bat m33
+.\run.bat m55
 
 # Display help and supported targets
 .\run.bat -h
@@ -95,10 +100,14 @@ Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) scri
 Supported targets:
 - **`windows`**: Native Windows Host (Win32 threads + Multimedia Timer) `[Default]`
 - **`posix`**: POSIX Multitasking Simulation (Pthreads + WSL / Linux)
-- **`m33` / `cortex-m33`**: ARM MPS2-AN505 (ARMv8-M Mainline)
-- **`m4` / `cortex-m4`**: ARM MPS2-AN386 (ARMv7E-M)
-- **`m3` / `cortex-m3`**: ARM MPS2-AN385 (ARMv7-M)
 - **`m0` / `cortex-m0`**: ARM MPS2-AN385 (ARMv6-M)
+- **`m0plus` / `cortex-m0plus`**: ARM MPS2-AN385 (ARMv6-M with VTOR)
+- **`m3` / `cortex-m3`**: ARM MPS2-AN385 (ARMv7-M)
+- **`m4` / `cortex-m4`**: ARM MPS2-AN386 (ARMv7E-M Single-Precision FPU)
+- **`m7` / `cortex-m7`**: ARM MPS2-AN500 (ARMv7E-M Double-Precision FPU)
+- **`m23` / `cortex-m23`**: ARM MPS2-AN505 (ARMv8-M Baseline + `PSPLIM`)
+- **`m33` / `cortex-m33`**: ARM MPS2-AN505 (ARMv8-M Mainline + `PSPLIM`)
+- **`m55` / `cortex-m55`**: ARM MPS3-AN547 (ARMv8.1-M Mainline Helium MVE + `PSPLIM`)
 
 ### Interactive Controls
 - **`[P]` or `[Space]`**: Pause or resume sample generation.
