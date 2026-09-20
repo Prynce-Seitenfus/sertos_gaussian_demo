@@ -28,6 +28,7 @@ extern int main(void);
 
 /* SertOS assembly exception handlers */
 extern void PendSV_Handler(void);
+extern void SysTick_Handler(void);
 
 void Reset_Handler(void);
 
@@ -79,15 +80,6 @@ void DebugMon_Handler(void)
     while (1) {
         __asm__ volatile ("wfi");
     }
-}
-
-/**
- * @brief Cortex-M periodic SysTick interrupt handler.
- * Drives SertOS monotonic scheduler ticks.
- */
-void SysTick_Handler(void)
-{
-    sertos_scheduler_tick();
 }
 
 void Reset_Handler(void)
