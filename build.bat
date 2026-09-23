@@ -24,6 +24,8 @@ for %%A in ("%~1" "%~2") do (
             set "CHOSEN_TARGET=mingw64"
         ) else if /i "%%~A"=="windows" (
             set "CHOSEN_TARGET=mingw64"
+        ) else if /i "%%~A"=="win" (
+            set "CHOSEN_TARGET=mingw64"
         ) else if /i "%%~A"=="linux" (
             set "CHOSEN_TARGET=linux"
         ) else if /i "%%~A"=="posix" (
@@ -104,7 +106,7 @@ if not defined CHOSEN_TARGET (
 if not exist "build" mkdir "build"
 if not exist "build\mingw64" mkdir "build\mingw64"
 if not exist "build\arm" mkdir "build\arm"
-if not exist "build\linux" mkdir "build\linux"
+if not exist "build\posix" mkdir "build\posix"
 if not exist "build\riscv" mkdir "build\riscv"
 
 set "SERTOS_DIR=..\sertos"
@@ -123,9 +125,9 @@ if "%CHOSEN_TARGET%"=="host" (
 ) else if "%CHOSEN_TARGET%"=="windows" (
     call :build_host_app
 ) else if "%CHOSEN_TARGET%"=="linux" (
-    call :build_posix_app
+    call :build_posix_wsl
 ) else if "%CHOSEN_TARGET%"=="posix" (
-    call :build_posix_app
+    call :build_posix_wsl
 ) else if "%CHOSEN_TARGET%"=="arm" (
     call :build_arm_all
 ) else if "%CHOSEN_TARGET%"=="cortex-m0" (
@@ -159,6 +161,7 @@ if "%CHOSEN_TARGET%"=="host" (
     call :build_riscv_single rv32imafc rv32imafc_zicsr ilp32f
 ) else if "%CHOSEN_TARGET%"=="all" (
     call :build_host_app
+    call :build_posix_wsl
     call :build_arm_all
     call :build_riscv_single rv32i    rv32i_zicsr    ilp32
     call :build_riscv_single rv32imc  rv32imc_zicsr  ilp32
@@ -226,9 +229,9 @@ if "%HOST_TOOLCHAIN:~-1%"=="\" set "HOST_TOOLCHAIN=%HOST_TOOLCHAIN:~0,-1%"
 
 set "HOST_CC=%HOST_TOOLCHAIN%\gcc.exe"
 set "HOST_SIZE=%HOST_TOOLCHAIN%\size.exe"
+set "PATH=%HOST_TOOLCHAIN%;%PATH%"
 
 set "SERTOS_HOST_LIB=%SERTOS_DIR%\lib\mingw64\libsertos_mingw64.a"
-if not exist "!SERTOS_HOST_LIB!" set "SERTOS_HOST_LIB=%SERTOS_DIR%\lib\windows\libsertos_windows.a"
 if not exist "!SERTOS_HOST_LIB!" (
     echo [INFO] SertOS MinGW-w64 host library not found. Building now...
     pushd "%SERTOS_DIR%"
@@ -255,7 +258,7 @@ set "HOST_LIBS="%SERTOS_HOST_LIB%" -lwinmm -lm"
 
 "%HOST_CC%" %HOST_CFLAGS% %COMMON_INCLUDES% %HOST_SRCS% %HOST_LIBS% -o "%TARGET_EXE%"
 if !ERRORLEVEL! neq 0 (
-    echo [ERROR] Failed compiling %TARGET_EXE%
+    echo [ERROR] Compiler or linker failed while building %TARGET_EXE%. See the diagnostic above.
     set "BUILD_FAIL=1"
     goto :eof
 )
@@ -394,68 +397,31 @@ if exist "%ARM_SIZE%" (
 goto :eof
 
 :: -----------------------------------------------------------------------------
-:: Subroutine: Build POSIX Host Target
+:: Subroutine: Build POSIX Host Target Through WSL
 :: -----------------------------------------------------------------------------
-:build_posix_app
-set "HOST_TOOLCHAIN="
-
-if defined CUSTOM_TOOLCHAIN (
-    if exist "%CUSTOM_TOOLCHAIN%\gcc.exe" set "HOST_TOOLCHAIN=%CUSTOM_TOOLCHAIN%"
-)
-
-if not defined HOST_TOOLCHAIN (
-    if exist "C:\toolchains\mingw64\13.2.0\bin\gcc.exe" (
-        set "HOST_TOOLCHAIN=C:\toolchains\mingw64\13.2.0\bin"
-    ) else if exist "C:\mingw64\gcc-13.2.0\mingw64\bin\gcc.exe" (
-        set "HOST_TOOLCHAIN=C:\mingw64\gcc-13.2.0\mingw64\bin"
-    ) else if exist "C:\mingw64\bin\gcc.exe" (
-        set "HOST_TOOLCHAIN=C:\mingw64\bin"
-    ) else if exist "C:\msys64\mingw64\bin\gcc.exe" (
-        set "HOST_TOOLCHAIN=C:\msys64\mingw64\bin"
-    )
-)
-
-if not defined HOST_TOOLCHAIN (
-    where gcc.exe >nul 2>nul
-    if not errorlevel 1 (
-        for /f "delims=" %%I in ('where gcc.exe') do (
-            if not defined HOST_TOOLCHAIN set "HOST_TOOLCHAIN=%%~dpI"
-        )
-    )
-)
-
-if not defined HOST_TOOLCHAIN (
-    echo [ERROR] MinGW / Host GCC toolchain not found!
-    set "BUILD_FAIL=1"
-    goto :eof
-)
-
-if "%HOST_TOOLCHAIN:~-1%"=="\" set "HOST_TOOLCHAIN=%HOST_TOOLCHAIN:~0,-1%"
-
-set "SERTOS_POSIX_LIB=%SERTOS_DIR%\lib\linux\libsertos_linux.a"
-if not exist "!SERTOS_POSIX_LIB!" set "SERTOS_POSIX_LIB=%SERTOS_DIR%\lib\posix\libsertos_posix.a"
-echo.
-echo ============================================================
-echo [BUILD] Building SertOS Linux Host Library...
-echo [TOOLCHAIN] %HOST_TOOLCHAIN%
-echo ============================================================
-pushd "%SERTOS_DIR%"
-call build.bat linux "%HOST_TOOLCHAIN%"
-popd
-if not exist "!SERTOS_POSIX_LIB!" (
-    echo [ERROR] Failed to compile !SERTOS_POSIX_LIB!
+:build_posix_wsl
+where wsl.exe >nul 2>nul
+if errorlevel 1 (
+    echo [ERROR] WSL was not found. Install and initialize WSL to build the POSIX demo.
     set "BUILD_FAIL=1"
     goto :eof
 )
 
 echo.
 echo ============================================================
-echo [SUCCESS] Linux kernel library ready: %SERTOS_POSIX_LIB%
-echo [INFO] Full demo Linux binary build is supported natively on
-echo        Linux / macOS / WSL using CMake or GCC termios:
-echo        cmake -B build/linux && cmake --build build/linux
-echo        On Windows host, build with: build.bat mingw64
+echo [BUILD] Compiling Gaussian demo for native POSIX through WSL...
+echo [SOURCE] %SCRIPT_DIR%
+echo [TOOLCHAIN] WSL native Linux (gcc, ar, size)
 echo ============================================================
+
+wsl.exe --cd "%SCRIPT_DIR%" -- bash ./build.sh
+if errorlevel 1 (
+    echo [ERROR] Native POSIX demo build failed in WSL.
+    set "BUILD_FAIL=1"
+    goto :eof
+)
+
+echo [SUCCESS] Native POSIX demo build completed.
 goto :eof
 
 :: -----------------------------------------------------------------------------
@@ -553,7 +519,7 @@ echo.
 echo Targets:
 echo   all         Build host, all 8 ARM Cortex, and all 4 RISC-V binaries [Default]
 echo   mingw64     Build MinGW-w64 host executable (build\mingw64\sertos_gaussian_demo.exe) [alias: windows]
-echo   linux       Build Linux host binary         (build\linux\sertos_gaussian_demo)       [alias: posix]
+echo   linux       Build POSIX host binary through WSL (build\posix\sertos_gaussian_demo) [alias: posix]
 echo   arm         Build all 8 ARM Cortex binaries (build\arm\sertos_gaussian_demo_m*.elf)
 echo   riscv       Build all 4 RISC-V binaries     (build\riscv\sertos_gaussian_demo_rv32*.elf)
 echo   rv32i       Build RISC-V RV32I baseline     (build\riscv\sertos_gaussian_demo_rv32i.elf)      ilp32

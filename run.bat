@@ -124,8 +124,6 @@ endlocal & exit /b %EXIT_CODE%
 if not defined USER_FILE (
     if exist "build\mingw64\sertos_gaussian_demo.exe" (
         set "USER_FILE=build\mingw64\sertos_gaussian_demo.exe"
-    ) else if exist "build\windows\sertos_gaussian_demo.exe" (
-        set "USER_FILE=build\windows\sertos_gaussian_demo.exe"
     ) else if exist "build\sertos_gaussian_demo.exe" (
         set "USER_FILE=build\sertos_gaussian_demo.exe"
     ) else (
@@ -161,9 +159,14 @@ where wsl.exe >nul 2>nul
 if not errorlevel 1 (
     echo [INFO] Windows Subsystem for Linux [WSL] detected.
     echo [INFO] Compiling Linux demo inside WSL...
-    wsl bash -c "cd /mnt/c/github/sertos && cmake -B build/linux -DCMAKE_BUILD_TYPE=Release && cmake --build build/linux && cd /mnt/c/github/sertos_gaussian_demo && cmake -B build/linux -DCMAKE_BUILD_TYPE=Release && cmake --build build/linux"
+    wsl.exe --cd "%SCRIPT_DIR%" -- bash ./build.sh
     if errorlevel 1 (
         echo [ERROR] WSL compilation failed.
+        exit /b 1
+    )
+    wsl.exe --cd "%SCRIPT_DIR%" -- test -x ./build/posix/sertos_gaussian_demo
+    if errorlevel 1 (
+        echo [ERROR] WSL build completed without producing build/posix/sertos_gaussian_demo.
         exit /b 1
     )
     echo.
@@ -172,15 +175,14 @@ if not errorlevel 1 (
     echo [RUN] Press 'q' in console or Ctrl+C to exit.
     echo ============================================================
     echo.
-    wsl /mnt/c/github/sertos_gaussian_demo/build/linux/sertos_gaussian_demo
+    wsl.exe --cd "%SCRIPT_DIR%" -- ./build/posix/sertos_gaussian_demo
     exit /b %ERRORLEVEL%
 ) else (
     echo [INFO] Linux / POSIX target is designed for Linux, macOS, or WSL.
     echo [INFO] To run on Linux:
     echo.
-    echo   cmake -B build/linux
-    echo   cmake --build build/linux
-    echo   ./build/linux/sertos_gaussian_demo
+    echo   bash ./build.sh
+    echo   ./build/posix/sertos_gaussian_demo
     echo.
     exit /b 0
 )
@@ -351,7 +353,7 @@ echo Usage: run.bat [TARGET] [BINARY_PATH]
 echo.
 echo Targets:
 echo   mingw64, windows Run MinGW-w64 host application (build\mingw64\sertos_gaussian_demo.exe) [Default]
-echo   linux, posix    Run Linux / POSIX environment via WSL runner (build\linux\sertos_gaussian_demo)
+echo   linux, posix    Run Linux / POSIX environment via WSL runner (build\posix\sertos_gaussian_demo)
 echo   riscv, rv32i    Run RISC-V RV32I in QEMU          (build\riscv\sertos_gaussian_demo_rv32i.elf)
 echo   rv32imc         Run RISC-V RV32IMC in QEMU        (build\riscv\sertos_gaussian_demo_rv32imc.elf)
 echo   rv32imac        Run RISC-V RV32IMAC in QEMU       (build\riscv\sertos_gaussian_demo_rv32imac.elf)

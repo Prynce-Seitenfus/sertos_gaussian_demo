@@ -62,7 +62,7 @@ cd C:\github\sertos_gaussian_demo
 .\build.bat mingw64
 .\build.bat windows
 
-# Build Linux host library & binary (build\linux\sertos_gaussian_demo)
+# Build POSIX host binary through WSL (build\posix\sertos_gaussian_demo)
 .\build.bat linux
 .\build.bat posix
 
@@ -83,7 +83,7 @@ Use the unified [`run.bat`](file:///C:/github/sertos_gaussian_demo/run.bat) scri
 .\run.bat mingw64
 .\run.bat windows
 
-# Run Linux host simulator (build\linux\sertos_gaussian_demo via WSL / Linux)
+# Run POSIX host simulator (build\posix\sertos_gaussian_demo via WSL / Linux)
 .\run.bat linux
 .\run.bat posix
 
@@ -135,4 +135,3 @@ C:\github\test_bench\tests\test_gaussian_math.exe
 Expected output confirms convergence over $>2,000$ samples:
 - **Empirical Mean**: $0.00 \pm 0.05$
 - **Empirical Standard Deviation**: $1.00 \pm 0.05$
-
