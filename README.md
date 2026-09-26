@@ -72,6 +72,9 @@ cd C:\github\sertos_gaussian_demo
 # Build a single ARM Cortex target (m0, m0plus, m3, m4, m7, m23, m33, m55)
 .\build.bat m7
 .\build.bat m55
+
+# Remove generated demo outputs before rebuilding
+.\build.bat --clean mingw64
 ```
 
 ### Running the Demo (`run.bat`)
