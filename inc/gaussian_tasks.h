@@ -9,11 +9,7 @@
 #ifndef GAUSSIAN_TASKS_H
 #define GAUSSIAN_TASKS_H
 
-#include "sertos_task.h"
-#include "sertos_queue.h"
-#include "sertos_mutex.h"
-#include "sertos_sem.h"
-#include "sertos_timer.h"
+#include "sertos.h"
 #include "gaussian_state.h"
 
 /**
