@@ -36,8 +36,15 @@ echo "[TOOLCHAIN] gcc=$(command -v gcc)"
 echo "[TOOLCHAIN] ar=$(command -v ar)"
 echo "[TOOLCHAIN] size=$(command -v size)"
 
+need_sertos_rebuild=0
 if [[ ! -f "$library" ]]; then
-    echo "[BUILD] SertOS POSIX library not found; building it first..."
+    need_sertos_rebuild=1
+elif [[ "$sertos_dir/src" -nt "$library" ]] || [[ "$sertos_dir/inc" -nt "$library" ]] || [[ "$sertos_dir/port" -nt "$library" ]]; then
+    need_sertos_rebuild=1
+fi
+
+if [[ "$need_sertos_rebuild" -eq 1 ]]; then
+    echo "[BUILD] Rebuilding SertOS POSIX library ($library)..."
     (
         cd "$sertos_dir"
         ./build.sh
