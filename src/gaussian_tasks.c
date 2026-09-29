@@ -182,7 +182,7 @@ void gaussian_task_visualizer_entry(void* param)
 
     while (1) {
         /* Periodic frame delay: 80 ms = 12.5 FPS */
-        (void)sertos_scheduler_delay(GAUSSIAN_VIS_DELAY_TICKS);
+        (void)sertos_scheduler_delay_ms(GAUSSIAN_VIS_DELAY_MS);
 
         /* Capture atomic state snapshot under mutex to prevent partial frames */
         if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
@@ -210,7 +210,7 @@ void gaussian_task_input_entry(void* param)
 
     while (!s_app_state.should_terminate) {
         /* Poll console input every 50 ms */
-        (void)sertos_scheduler_delay(GAUSSIAN_INPUT_DELAY_TICKS);
+        (void)sertos_scheduler_delay_ms(GAUSSIAN_INPUT_DELAY_MS);
 
         if (bsp_console_poll_char(&ch)) {
             if ((ch == 'p') || (ch == 'P') || (ch == ' ')) {

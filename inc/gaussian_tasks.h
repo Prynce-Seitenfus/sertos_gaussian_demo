@@ -29,19 +29,20 @@
 #define GAUSSIAN_STACK_SIZE_INPUT       (1024U)
 
 /**
- * @brief Autonomous hardware acquisition timer interval (50 Hz = 20 ms / 20 ticks).
+ * @brief Autonomous hardware acquisition timer interval (50 Hz = 20 ms).
  */
-#define GAUSSIAN_TIMER_PERIOD_TICKS     (20U)
+#define GAUSSIAN_TIMER_PERIOD_MS        (20U)
+#define GAUSSIAN_TIMER_PERIOD_TICKS     SERTOS_MS_TO_TICKS(GAUSSIAN_TIMER_PERIOD_MS)
 
 /**
- * @brief Visualizer frame interval (12.5 FPS = 80 ms / 80 ticks).
+ * @brief Visualizer frame interval (12.5 FPS = 80 ms).
  */
-#define GAUSSIAN_VIS_DELAY_TICKS        (80U)
+#define GAUSSIAN_VIS_DELAY_MS           (80U)
 
 /**
- * @brief Input polling interval (50 ms / 50 ticks).
+ * @brief Input polling interval (50 ms).
  */
-#define GAUSSIAN_INPUT_DELAY_TICKS      (50U)
+#define GAUSSIAN_INPUT_DELAY_MS         (50U)
 
 /**
  * @brief Initializes all static RTOS primitives (queue, mutex, semaphore, timer) and tasks.
