@@ -40,6 +40,7 @@ typedef struct GaussianState {
     bool is_paused;                   /**< True if sample generation is paused by user. */
     bool should_terminate;            /**< True if application shutdown was requested. */
     bool stream_mode;                 /**< True for linear log stream mode instead of ANSI dashboard. */
+    bool show_stats;                  /**< True to display the live kernel task-statistics view. */
 } GaussianState;
 
 /**

@@ -25,7 +25,8 @@ int main(void)
         .idle_task_stack      = s_idle_task_stack,           /* Static user-provisioned Idle stack */
         .idle_task_stack_size = sizeof(s_idle_task_stack),
         .tick_hook            = NULL,
-        .idle_hook            = NULL
+        .idle_hook            = NULL,
+        .enable_runtime_stats = true                         /* Enable per-task runtime telemetry */
     };
 
     /* Initialize BSP console hardware (UART / standard I/O) */

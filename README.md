@@ -120,6 +120,7 @@ Supported targets:
 - **`[P]` or `[Space]`**: Pause or resume sample generation.
 - **`[R]`**: Reset histogram bin counts and statistical moments to zero.
 - **`[M]`**: Toggle between the compact stationary ANSI dashboard and the linear log stream mode (ideal for serial loggers / non-ANSI terminals).
+- **`[S]`**: Toggle the live kernel task-statistics view (per-task CPU share, context-switch counts, stack high-water) sampled from the SertOS runtime-statistics API.
 - **`[Q]` or `[Esc]`**: Gracefully shut down the scheduler, restore terminal cursor, and exit.
 
 > [!TIP]

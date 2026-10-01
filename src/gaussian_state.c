@@ -14,6 +14,7 @@ void gaussian_state_init(GaussianState* state)
         state->is_paused = false;
         state->should_terminate = false;
         state->stream_mode = false;
+        state->show_stats = false;
     }
 }
 

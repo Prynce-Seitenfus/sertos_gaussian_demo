@@ -229,6 +229,11 @@ void gaussian_task_input_entry(void* param)
                     s_app_state.stream_mode = !s_app_state.stream_mode;
                     (void)sertos_mutex_unlock(s_mutex_handle);
                 }
+            } else if ((ch == 's') || (ch == 'S')) {
+                if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
+                    s_app_state.show_stats = !s_app_state.show_stats;
+                    (void)sertos_mutex_unlock(s_mutex_handle);
+                }
             } else if ((ch == 'q') || (ch == 'Q')) {
                 (void)sertos_timer_stop(s_timer_handle);
                 if (sertos_mutex_lock(s_mutex_handle, SERTOS_WAIT_FOREVER) == SERTOS_STATUS_OK) {
